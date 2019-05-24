@@ -35,7 +35,7 @@ class Routes implements ContainerInjectionInterface {
     $jsonapi_schema_routes = new RouteCollection();
     foreach ($jsonapi_routes as $jsonapi_route_name => $jsonapi_route) {
       $excluded_route_names = ['jsonapi.resource_list'];
-      if (!in_array('GET', $jsonapi_route->getMethods(), TRUE) || in_array($jsonapi_route_name, $excluded_route_names, TRUE)) {
+      if (in_array($jsonapi_route_name, $excluded_route_names, TRUE)) {
         continue;
       }
       $document_schema_route = new Route(str_replace("/{entity}", "/resource", $jsonapi_route->getPath()) . '/schema.json');

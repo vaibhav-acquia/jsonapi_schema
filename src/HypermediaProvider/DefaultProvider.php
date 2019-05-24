@@ -5,6 +5,8 @@ namespace Drupal\jsonapi_schema\HypermediaProvider;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
+use Drupal\Core\Routing\RequestContext;
+use Drupal\Core\Routing\Router;
 use Drupal\Core\Url;
 use Drupal\jsonapi\JsonApiResource\JsonApiDocumentTopLevel;
 use Drupal\jsonapi\JsonApiResource\Link;
@@ -14,7 +16,7 @@ use Drupal\jsonapi\Routing\Routes;
 use Drupal\jsonapi_hypermedia\HypermediaProviderInterface;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Matcher\RequestMatcherInterface;
+use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 
 /**
  * Provides schema-specific hyperlinks.
@@ -24,7 +26,7 @@ use Symfony\Component\Routing\Matcher\RequestMatcherInterface;
 class DefaultProvider implements HypermediaProviderInterface {
 
   /**
-   * @var \Symfony\Component\Routing\Matcher\RequestMatcherInterface
+   * @var \Drupal\Core\Routing\Router
    */
   protected $router;
 
@@ -32,7 +34,7 @@ class DefaultProvider implements HypermediaProviderInterface {
    * DefaultProvider constructor.
    *
    */
-  public function __construct(RequestMatcherInterface $router) {
+  public function __construct(Router $router) {
     $this->router = $router;
   }
 
@@ -42,7 +44,7 @@ class DefaultProvider implements HypermediaProviderInterface {
   public function hyperlink(LinkCollection $link_collection) {
     $context = $link_collection->getContext();
     if ($context instanceof JsonApiDocumentTopLevel) {
-      return $this->hyperlinkTopLevelDocument($context, $link_collection);
+      return $this->hyperlinkTopLevelDocument($link_collection);
     }
     elseif ($context instanceof ResourceObject) {
       return $this->hyperlinkResourceObject($context, $link_collection);
@@ -58,11 +60,7 @@ class DefaultProvider implements HypermediaProviderInterface {
       if ($key === 'related') {
         $link = $links[0];
         assert($link instanceof Link);
-        // We can ignore the cacheability because it's already associated with
-        // the `self` link.
-        $request_uri = $link->getUri()->toString(TRUE)->getGeneratedUrl();
-        $match = $this->router->matchRequest(Request::create($request_uri));
-        $route_name = $match[RouteObjectInterface::ROUTE_NAME];
+        $route_name = $this->getRouteNameFromLink($link);
         if (strpos($route_name, 'related') !== FALSE) {
           $schema_url = Url::fromRoute("$route_name.jsonapi_schema.document");
           $schema_href = $schema_url->setAbsolute()->toString(TRUE);
@@ -84,17 +82,16 @@ class DefaultProvider implements HypermediaProviderInterface {
     return $link_collection;
   }
 
-  protected function hyperlinkTopLevelDocument(JsonApiDocumentTopLevel $document, LinkCollection $link_collection) {
+  protected function hyperlinkTopLevelDocument(LinkCollection $link_collection) {
     foreach ($link_collection as $key => $links) {
       if ($key === 'self') {
         $link = $links[0];
         assert($link instanceof Link);
-        // We can ignore the cacheability because it's already associated with
-        // the `self` link.
-        $request_uri = $link->getUri()->toString(TRUE)->getGeneratedUrl();
-        $match = $this->router->matchRequest(Request::create($request_uri));
-        $route_name = $match[RouteObjectInterface::ROUTE_NAME];
-        if (strpos($route_name, 'relationship') === FALSE && $route_name !== 'jsonapi.resource_list') {
+        $route_name = $this->getRouteNameFromLink($link);
+        if ($route_name === 'jsonapi.resource_list') {
+           $link_collection = $this->hyperlinkEntrypoint($link_collection);
+        }
+        elseif (strpos($route_name, 'relationship') === FALSE) {
           $schema_link = new Link(new CacheableMetadata(), Url::fromRoute("$route_name.jsonapi_schema.document"), ['describedBy']);
           $link_collection = $link_collection->withLink('describedBy', $schema_link);
         }
@@ -102,6 +99,52 @@ class DefaultProvider implements HypermediaProviderInterface {
       }
     }
     return $link_collection;
+  }
+
+  protected function hyperlinkEntryPoint(LinkCollection $link_collection) {
+    foreach ($link_collection as $key => $links) {
+      if ($key === 'self') {
+        continue;
+      }
+      $link = $links[0];
+      assert($link instanceof Link);
+      $route_name = $this->getRouteNameFromLink($link);
+      if (strpos($route_name, 'collection') !== FALSE) {
+        $schema_url = Url::fromRoute("$route_name.jsonapi_schema.document");
+        $schema_href = $schema_url->setAbsolute()->toString(TRUE);
+        $target_attributes = NestedArray::mergeDeep($link->getTargetAttributes(), ['linkParams' => ['describedBy' => $schema_href->getGeneratedUrl()]]);
+        $link = new Link(CacheableMetadata::createFromObject($link)->addCacheableDependency($schema_href), $link->getUri(), $link->getLinkRelationTypes(), $target_attributes);
+        $link_collection = $link_collection->withLink($key, $link);
+      }
+    }
+    return $link_collection;
+  }
+
+  protected function getRouteNameFromLink(Link $link) {
+    $link_uri = $link->getUri()->toString(TRUE)->getGeneratedUrl();
+    try {
+      $match = $this->getRouteMatchFromUriAndMethod($link_uri, 'GET');
+    }
+    catch (MethodNotAllowedException $e) {
+      $allowed_methods = $e->getAllowedMethods();
+      $match = $this->getRouteMatchFromUriAndMethod($link_uri, array_shift($allowed_methods));
+    }
+    return $match[RouteObjectInterface::ROUTE_NAME];
+  }
+
+  protected function getRouteMatchFromUriAndMethod($uri, $method) {
+    $request = Request::create($uri, $method);
+    $request->headers->add([
+      'accept' => 'application/vnd.api+json',
+      'content-type' => 'application/vnd.api+json',
+    ]);
+    $current_context = $this->router->getContext();
+    $new_context = new RequestContext();
+    $new_context->fromRequest($request);
+    $this->router->setContext($new_context);
+    $match = $this->router->matchRequest($request);
+    $this->router->setContext($current_context);
+    return $match;
   }
 
 }
