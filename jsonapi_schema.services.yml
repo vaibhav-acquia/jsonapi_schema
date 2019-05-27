@@ -8,3 +8,12 @@ services:
       - '@router.no_access_checks'
     tags:
       - { name: jsonapi_hypermedia_provider, priority: 0 }
+
+  jsonapi_schema.static_data_definition_extractor:
+    class: Drupal\jsonapi_schema\StaticDataDefinitionExtractor
+    arguments: ['@typed_data_manager', '@config.typed', '@entity_field.manager']
+
+  jsonapi_schema.resource_field.factory:
+    class: Drupal\jsonapi_schema\ResourceType\TypedResourceFieldFactory
+    decorates: jsonapi.resource_field.factory
+    arguments: ['@jsonapi_schema.resource_field.factory.inner', '@jsonapi_schema.static_data_definition_extractor']

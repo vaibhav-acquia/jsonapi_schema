@@ -5,6 +5,7 @@ namespace Drupal\jsonapi_schema\Controller;
 use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\TypedData\DataDefinitionInterface;
 use Drupal\Core\Url;
 use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\Routing\Routes;
@@ -102,19 +103,25 @@ class JsonApiSchemaController extends ControllerBase {
       ],
     ];
     $cacheability = new CacheableMetadata();
-    $schema = static::addAttributesSchema($schema, $field_names['attributes']);
+    $schema = static::addAttributesSchema($resource_type, $schema, $field_names['attributes']);
     $schema = static::addRelationshipsSchema($resource_type, $schema, $cacheability);
     return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
   }
 
-  protected static function addAttributesSchema(array $schema, $field_names) {
+  protected static function addAttributesSchema(ResourceType $resource_type, array $schema, $field_names) {
     if (empty($field_names)) {
       return $schema;
     }
     $schema['properties']['attributes'] = [
       '$ref' => '#/definitions/attributes',
     ];
-    $attributes = array_fill_keys($field_names, (object) []);
+    $data_definitions = array_map(function ($field_name) use ($resource_type) {
+      $resource_type->getFieldByName($field_name)->getDataDefinition();
+    }, array_column($field_names, $field_names));
+    $attributes = array_map(function (DataDefinitionInterface $data_definition) {
+      // TODO: The normalization is still missing, however we can lift much of it from Schemata.
+      $this->serializer->normalize($data_definition, 'json_schema');
+    }, $data_definitions);
     $schema['definitions']['attributes'] = [
       'type' => 'object',
       'properties' => $attributes,
