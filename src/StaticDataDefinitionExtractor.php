@@ -7,6 +7,7 @@ use Drupal\Core\Config\Entity\ConfigEntityTypeInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Entity\ContentEntityTypeInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Entity\EntityTypeBundleInfo;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\TypedData\DataDefinition;
@@ -108,23 +109,18 @@ class StaticDataDefinitionExtractor {
   }
 
   private function extractContentEntityType(ContentEntityTypeInterface $entity_type, $bundle) {
-    $field_definitions = $this->entityFieldManager->getFieldDefinitions(
-      $entity_type->id(),
-      $bundle
-    );
-    $property_definitions = array_map(function (FieldDefinitionInterface $field_definition) {
-      return $field_definition->getItemDefinition();
-    }, $field_definitions);
-    $data_type = sprintf('entity:%s:%s', $entity_type->id(), $bundle);
-    $definition = MapDataDefinition::createFromDataType($data_type);
-    foreach ($property_definitions as $field_name => $data_definition) {
-      $definition->setPropertyDefinition($field_name, $data_definition);
+    $data_type = sprintf('entity:%s', $entity_type->id());
+    if ($entity_type->getBundleEntityType()) {
+      $data_type .= ':' . $bundle;
     }
-    return $definition;
+    return $this->typedDataManager->createDataDefinition($data_type);
   }
 
   private function extractConfigEntityType(ConfigEntityTypeInterface $entity_type, $bundle) {
-    $data_type = sprintf('entity:%s:%s', $entity_type->id(), $bundle);
+    $data_type = sprintf('entity:%s', $entity_type->id());
+    if ($entity_type->hasKey('bundle')) {
+      $data_type .= ':' . $bundle;
+    }
     $config_definition = $this->typedConfigManager->getDefinition(
       sprintf('%s.%s', $entity_type->getConfigPrefix(), static::BOGUS_CONFIG_ENTITY_ID),
       FALSE

@@ -2,20 +2,47 @@
 
 namespace Drupal\jsonapi_schema\Controller;
 
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\TypedData\DataDefinitionInterface;
 use Drupal\Core\Url;
+use Drupal\jsonapi\ResourceType\ResourceAttribute;
+use Drupal\jsonapi\ResourceType\ResourceFieldInterface;
+use Drupal\jsonapi\ResourceType\ResourceRelationship;
 use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\Routing\Routes;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class JsonApiSchemaController extends ControllerBase {
 
   const JSON_SCHEMA_DRAFT = 'http://json-schema.org/draft-07/schema';
 
   const JSONAPI_BASE_SCHEMA_URI = 'https://jsonapi.org/schema';
+
+  /**
+   * The serialization service.
+   *
+   * @var \Symfony\Component\Serializer\Normalizer\NormalizerInterface
+   */
+  protected $normalizer;
+
+  /**
+   * JsonApiSchemaController constructor.
+   *
+   * @param \Symfony\Component\Serializer\Normalizer\NormalizerInterface $normalizer
+   *   The serializer.
+   */
+  public function __construct(NormalizerInterface $normalizer) {
+    $this->normalizer = $normalizer;
+  }
+
+  public static function create(ContainerInterface $container) {
+    return new static($container->get('serializer'));
+  }
 
   public function getDocumentSchema(Request $request, ResourceType $resource_type, $jsonapi_route_type) {
     $schema = [
@@ -81,7 +108,6 @@ class JsonApiSchemaController extends ControllerBase {
   }
 
   public function getResourceSchema(Request $request, ResourceType $resource_type, $jsonapi_route_name, $jsonapi_route_type) {
-    $field_names = static::getResourceFieldNames($resource_type);
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
       '$id' => $request->getUri(),
@@ -103,39 +129,46 @@ class JsonApiSchemaController extends ControllerBase {
       ],
     ];
     $cacheability = new CacheableMetadata();
-    $schema = static::addAttributesSchema($resource_type, $schema, $field_names['attributes']);
-    $schema = static::addRelationshipsSchema($resource_type, $schema, $cacheability);
+    $schema = $this->addFieldsSchema($resource_type, $schema);
+    $schema = $this->addRelationshipsSchemaLinks($resource_type, $schema, $cacheability);
     return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
   }
 
-  protected static function addAttributesSchema(ResourceType $resource_type, array $schema, $field_names) {
-    if (empty($field_names)) {
+  protected function addFieldsSchema(ResourceType $resource_type, array $schema) {
+    $resource_attributes = $resource_type->getResourceFields();
+    if (empty($resource_attributes)) {
       return $schema;
     }
     $schema['properties']['attributes'] = [
       '$ref' => '#/definitions/attributes',
     ];
-    $data_definitions = array_map(function ($field_name) use ($resource_type) {
-      $resource_type->getFieldByName($field_name)->getDataDefinition();
-    }, array_column($field_names, $field_names));
-    $attributes = array_map(function (DataDefinitionInterface $data_definition) {
-      // TODO: The normalization is still missing, however we can lift much of it from Schemata.
-      $this->serializer->normalize($data_definition, 'json_schema');
-    }, $data_definitions);
-    $schema['definitions']['attributes'] = [
-      'type' => 'object',
-      'properties' => $attributes,
-      'additionalProperties' => FALSE,
-    ];
+    $normalizer = $this->normalizer;
+    $fields = array_reduce($resource_attributes, function ($carry, ResourceFieldInterface $attribute) use ($normalizer){
+      $json_schema = $normalizer->normalize(
+        $attribute->getDataDefinition(),
+        'schema_json',
+        ['name' => $attribute->getAlias()]
+      );
+      return NestedArray::mergeDeep($carry, $json_schema);
+    }, []);
+    $field_definitions = NestedArray::getValue($fields, ['properties']) ?: [];
+    if (!empty($field_definitions['attributes'])) {
+      $field_definitions['attributes']['additionalProperties'] = FALSE;
+    }
+    if (!empty($field_definitions['relationships'])) {
+      $field_definitions['relationships']['additionalProperties'] = FALSE;
+    }
+    $schema['definitions'] = $field_definitions;
     return $schema;
   }
 
-  protected static function addRelationshipsSchema(ResourceType $resource_type, array $schema, CacheableMetadata $cacheability) {
-    $field_names = static::getResourceFieldNames($resource_type)['relationships'];
-    if (empty($field_names)) {
+  protected function addRelationshipsSchemaLinks(ResourceType $resource_type, array $schema, CacheableMetadata $cacheability) {
+    $resource_relationships = $resource_type->getResourceRelationships();
+    if (empty($resource_relationships)) {
       return $schema;
     }
-    $relationships = array_reduce($field_names, function ($relationships, $field_name) use ($resource_type, $cacheability) {
+    $relationship_links = array_reduce($resource_relationships, function ($relationships, ResourceRelationship $relationship) use ($resource_type, $cacheability) {
+      $field_name = $relationship->getAlias();
       $related_schema_uri = Url::fromRoute(Routes::getRouteName($resource_type, "$field_name.related") . '.jsonapi_schema.document')->setAbsolute()->toString(TRUE);
       $cacheability->addCacheableDependency($related_schema_uri);
       return array_merge($relationships, [
@@ -157,24 +190,11 @@ class JsonApiSchemaController extends ControllerBase {
         ],
       ]);
     }, []);
-    $schema['definitions']['relationships'] = [
-      'type' => 'object',
-      'properties' => $relationships,
-      'additionalProperties' => FALSE,
-    ];
+    $schema['definitions']['relationships'] = NestedArray::mergeDeep(
+      empty($schema['definitions']['relationships']) ? [] : $schema['definitions']['relationships'],
+      ['properties' => $relationship_links]
+    );
     return $schema;
-  }
-
-  protected static function getResourceFieldNames(ResourceType $resource_type) {
-    $field_names = array_filter(array_map(function ($internal_field_name) use ($resource_type) {
-      return $resource_type->isFieldEnabled($internal_field_name) ? $resource_type->getPublicName($internal_field_name) : FALSE;
-    }, $resource_type->fields));
-    $relationship_field_names = array_intersect($field_names, array_keys($resource_type->getrelatableresourcetypes()));
-    $attribute_field_names = array_diff($field_names, $relationship_field_names);
-    return [
-      'attributes' => $attribute_field_names,
-      'relationships' => $relationship_field_names,
-    ];
   }
 
 }

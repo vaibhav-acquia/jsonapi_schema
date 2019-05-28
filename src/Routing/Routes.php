@@ -5,6 +5,7 @@ namespace Drupal\jsonapi_schema\Routing;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\jsonapi\Access\RelationshipFieldAccess;
 use Drupal\jsonapi\Routing\Routes as JsonApiRoutes;
+use Drupal\jsonapi_schema\Controller\JsonApiSchemaController;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Routing\Route;
@@ -12,7 +13,7 @@ use Symfony\Component\Routing\RouteCollection;
 
 class Routes implements ContainerInjectionInterface {
 
-  const CONTROLLER_NAME = 'jsonapi_schema.controller';
+  const CONTROLLER_NAME = JsonApiSchemaController::class;
 
   protected $jsonApiRoutes;
 
@@ -50,7 +51,10 @@ class Routes implements ContainerInjectionInterface {
         $jsonapi_route_type = array_pop($jsonapi_route_name_components);
       }
       assert(in_array($jsonapi_route_type, ['individual', 'relationship', 'related', 'collection'], TRUE), $jsonapi_route_name);
-      if (!in_array($jsonapi_route_type, ['collection', 'individual', 'related'], TRUE)) {
+      if (
+        !in_array($jsonapi_route_type, ['collection', 'individual', 'related'], TRUE)
+        || array_search('GET', $jsonapi_route->getMethods()) === FALSE
+      ) {
         continue;
       }
       $defaults['jsonapi_route_type'] = $jsonapi_route_type;
@@ -63,17 +67,20 @@ class Routes implements ContainerInjectionInterface {
       unset($jsonapi_route_requirements[RelationshipFieldAccess::ROUTE_REQUIREMENT_KEY]);
       $jsonapi_route_requirements['_access'] = 'TRUE';
       $document_schema_route->addRequirements($jsonapi_route_requirements);
-      $document_schema_route->setDefault(RouteObjectInterface::CONTROLLER_NAME, static::CONTROLLER_NAME . ':getDocumentSchema');
+      $document_schema_route->setDefault(RouteObjectInterface::CONTROLLER_NAME, static::CONTROLLER_NAME . '::getDocumentSchema');
       $jsonapi_schema_routes->add("$jsonapi_route_name.jsonapi_schema.document", $document_schema_route);
       if ($jsonapi_route_type === 'individual') {
-        $resource_schema_route = clone $document_schema_route;
-        $resource_schema_route->setPath(str_replace("/{entity}", "/resource", $jsonapi_route->getPath()) . '/data/schema.json');
-        $resource_schema_route->setDefault(RouteObjectInterface::CONTROLLER_NAME, static::CONTROLLER_NAME . ':getResourceSchema');
+        $path = str_replace("/{entity}", "/resource", $jsonapi_route->getPath()) . '/data/schema.json';
+        $resource_schema_route = new Route(
+          $path,
+          array_merge($defaults, [RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getResourceSchema']),
+          ['_access' => 'TRUE']
+        );
+        $resource_schema_route->setOption('parameters', $parameters);
         $jsonapi_schema_routes->add("$jsonapi_route_name.jsonapi_schema.resource", $resource_schema_route);
       }
     }
     return $jsonapi_schema_routes;
   }
-
 
 }
