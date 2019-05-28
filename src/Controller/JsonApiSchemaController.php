@@ -7,7 +7,7 @@ use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Url;
 use Drupal\jsonapi\ResourceType\ResourceType;
-use Drupal\jsonapi\Routing\Routes;
+use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 class JsonApiSchemaController extends ControllerBase {
@@ -16,7 +16,13 @@ class JsonApiSchemaController extends ControllerBase {
 
   const JSONAPI_BASE_SCHEMA_URI = 'https://jsonapi.org/schema';
 
-  public function getDocumentSchema(Request $request, ResourceType $resource_type, $jsonapi_route_type) {
+  protected $resourceTypeRepository;
+
+  public function __construct(ResourceTypeRepositoryInterface $resource_type_repository) {
+    $this->resourceTypeRepository = $resource_type_repository;
+  }
+
+  public function getDocumentSchema(Request $request, $resource_type, $route_type) {
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
       '$id' => $request->getUri(),
@@ -41,45 +47,33 @@ class JsonApiSchemaController extends ControllerBase {
       ],
     ];
     $cacheability = new CacheableMetadata();
-    $get_url = function (ResourceType $resource_type, $type) {
-      return Url::fromRoute(Routes::getRouteName($resource_type, $type) . '.jsonapi_schema.resource');
+    $get_schema_ref = function ($resource_type) use ($cacheability) {
+      $schema_url = Url::fromRoute("jsonapi_schema.$resource_type.type")->setAbsolute()->toString(TRUE);
+      $cacheability->addCacheableDependency($schema_url);
+      return ['$ref' => $schema_url->getGeneratedUrl()];
     };
-    switch ($jsonapi_route_type) {
+    $type_schema = is_array($resource_type)
+      ? ['anyOf' => array_map($get_schema_ref, $resource_type)]
+      : $get_schema_ref($resource_type);
+    switch ($route_type) {
       case 'individual':
-        $resource_schema_uri = $get_url($resource_type, 'individual')->setAbsolute()->toString(TRUE);
-        $schema['definitions']['data'] = ['$ref' => $resource_schema_uri->getGeneratedUrl()];
-        $cacheability->addCacheableDependency($resource_schema_uri);
+        $schema['definitions']['data'] = $type_schema;
         break;
-
-      case 'related':
-        $relationship_field_name = $request->get('related');
-        $relatable_resource_types = $resource_type->getRelatableResourceTypesByField($relationship_field_name);
-        $related_resource_uris = [];
-        foreach ($relatable_resource_types as $target_resource_type) {
-          $related_resource_uri = $get_url($target_resource_type, 'individual')->setAbsolute()->toString(TRUE);
-          $cacheability->addCacheableDependency($related_resource_uri);
-          $related_resource_uris[] = [
-            '$ref' => $related_resource_uri->getGeneratedUrl(),
-          ];
-        }
-        assert(count($related_resource_uris) > 0);
-        $schema['definitions']['data'] = count($related_resource_uris) > 1
-          ? ['anyOf' => $related_resource_uris]
-          : array_shift($related_resource_uris);
-        break;
-
       case 'collection':
-        $resource_schema_uri = $get_url($resource_type, 'individual')->setAbsolute()->toString(TRUE);
-        $cacheability->addCacheableDependency($resource_schema_uri);
-        $schema['definitions']['data']['type'] = 'array';
-        $schema['definitions']['data']['items'][] = [
-          '$ref' => $resource_schema_uri->getGeneratedUrl(),
+        $schema['definitions']['data'] = [
+          'type' => 'array',
+          'items' => $type_schema,
         ];
+        break;
+      case 'relationship':
+        assert('not implemented');
+        break;
     }
     return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
   }
 
-  public function getResourceSchema(Request $request, ResourceType $resource_type, $jsonapi_route_name, $jsonapi_route_type) {
+  public function getResourceObjectSchema(Request $request, $resource_type) {
+    $resource_type = $this->resourceTypeRepository->getByTypeName($resource_type);
     $field_names = static::getResourceFieldNames($resource_type);
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
@@ -129,26 +123,17 @@ class JsonApiSchemaController extends ControllerBase {
       return $schema;
     }
     $relationships = array_reduce($field_names, function ($relationships, $field_name) use ($resource_type, $cacheability) {
-      $related_schema_uri = Url::fromRoute(Routes::getRouteName($resource_type, "$field_name.related") . '.jsonapi_schema.document')->setAbsolute()->toString(TRUE);
+      $resource_type_name = $resource_type->getTypeName();
+      $related_route_name = "jsonapi_schema.{$resource_type_name}.$field_name.related";
+      $related_schema_uri = Url::fromRoute($related_route_name)->setAbsolute()->toString(TRUE);
       $cacheability->addCacheableDependency($related_schema_uri);
-      return array_merge($relationships, [
-        $field_name => [
-          'type' => 'object',
-          'properties' => [
-            'links' => [
-              'type' => 'object',
-              'properties' => [
-                'related' => [
-                  'type' => 'object',
-                  'properties' => [
-                    'describedBy' => ['const' => $related_schema_uri->getGeneratedUrl()]
-                  ],
-                ],
-              ],
-            ],
-          ],
-        ],
-      ]);
+      $drill_prop_into_a_nested_object_schema = function ($path, $prop) {
+        return array_reduce(array_reverse(explode('.', $path)), function ($prop, $prop_name) {
+          return ['type' => 'object', 'properties' => [$prop_name => $prop]];
+        }, $prop);
+      };
+      $drilled_object = $drill_prop_into_a_nested_object_schema('links.related.meta.linkParams.describedBy', ['const' => $related_schema_uri->getGeneratedUrl()]);
+      return array_merge($relationships, [$field_name => $drilled_object]);
     }, []);
     $schema['definitions']['relationships'] = [
       'type' => 'object',

@@ -12,7 +12,6 @@ use Drupal\jsonapi\JsonApiResource\JsonApiDocumentTopLevel;
 use Drupal\jsonapi\JsonApiResource\Link;
 use Drupal\jsonapi\JsonApiResource\LinkCollection;
 use Drupal\jsonapi\JsonApiResource\ResourceObject;
-use Drupal\jsonapi\Routing\Routes;
 use Drupal\jsonapi_hypermedia\HypermediaProviderInterface;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -62,7 +61,9 @@ class DefaultProvider implements HypermediaProviderInterface {
         assert($link instanceof Link);
         $route_name = $this->getRouteNameFromLink($link);
         if (strpos($route_name, 'related') !== FALSE) {
-          $schema_url = Url::fromRoute("$route_name.jsonapi_schema.document");
+          $route_name_components = explode('.', $route_name);
+          $schema_route_name = "jsonapi_schema.{$route_name_components[1]}.{$route_name_components[2]}.related";
+          $schema_url = Url::fromRoute($schema_route_name);
           $schema_href = $schema_url->setAbsolute()->toString(TRUE);
           $target_attributes = NestedArray::mergeDeep($link->getTargetAttributes(), ['linkParams' => ['describedBy' => $schema_href->getGeneratedUrl()]]);
           $link = new Link(CacheableMetadata::createFromObject($link)->addCacheableDependency($schema_href), $link->getUri(), $link->getLinkRelationTypes(), $target_attributes);
@@ -75,8 +76,8 @@ class DefaultProvider implements HypermediaProviderInterface {
   }
 
   protected function hyperlinkResourceObject(ResourceObject $resource, LinkCollection $link_collection) {
-    $resource_type = $resource->getResourceType();
-    $resource_schema_uri = Url::fromRoute(Routes::getRouteName($resource_type, 'individual') . '.jsonapi_schema.resource');
+    $resource_type_name = $resource->getResourceType()->getTypeName();
+    $resource_schema_uri = Url::fromRoute("jsonapi_schema.$resource_type_name.type");
     $resource_schema_link = new Link(new CacheableMetadata(), $resource_schema_uri, ['describedBy']);
     $link_collection = $link_collection->withLink('describedBy', $resource_schema_link);
     return $link_collection;
@@ -92,7 +93,14 @@ class DefaultProvider implements HypermediaProviderInterface {
            $link_collection = $this->hyperlinkEntrypoint($link_collection);
         }
         elseif (strpos($route_name, 'relationship') === FALSE) {
-          $schema_link = new Link(new CacheableMetadata(), Url::fromRoute("$route_name.jsonapi_schema.document"), ['describedBy']);
+          $route_name_components = explode('.', $route_name);
+          if (in_array($route_name_components[2], ['individual', 'collection'], TRUE)) {
+            $schema_route_name = "jsonapi_schema.{$route_name_components[1]}.{$route_name_components[2]}";
+          }
+          else {
+            $schema_route_name = "jsonapi_schema.{$route_name_components[1]}.{$route_name_components[2]}.{$route_name_components[3]}";
+          }
+          $schema_link = new Link(new CacheableMetadata(), Url::fromRoute($schema_route_name), ['describedBy']);
           $link_collection = $link_collection->withLink('describedBy', $schema_link);
         }
         break;
@@ -110,7 +118,8 @@ class DefaultProvider implements HypermediaProviderInterface {
       assert($link instanceof Link);
       $route_name = $this->getRouteNameFromLink($link);
       if (strpos($route_name, 'collection') !== FALSE) {
-        $schema_url = Url::fromRoute("$route_name.jsonapi_schema.document");
+        $route_name_components = explode('.', $route_name);
+        $schema_url = Url::fromRoute("jsonapi_schema.{$route_name_components[1]}.collection");
         $schema_href = $schema_url->setAbsolute()->toString(TRUE);
         $target_attributes = NestedArray::mergeDeep($link->getTargetAttributes(), ['linkParams' => ['describedBy' => $schema_href->getGeneratedUrl()]]);
         $link = new Link(CacheableMetadata::createFromObject($link)->addCacheableDependency($schema_href), $link->getUri(), $link->getLinkRelationTypes(), $target_attributes);
