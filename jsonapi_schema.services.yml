@@ -1,8 +1,15 @@
 services:
+  jsonapi_schema.controller:
+    class: Drupal\jsonapi_schema\Controller\JsonApiSchemaController
+    arguments:
+      - '@jsonapi.resource_type.repository'
+      - '@serializer'
+
   jsonapi_schema.jsonapi_hypermedia_provider:
     class: Drupal\jsonapi_schema\HypermediaProvider\DefaultProvider
     arguments:
       - '@router.no_access_checks'
+      - '@jsonapi.resource_type.repository'
     tags:
       - { name: jsonapi_hypermedia_provider, priority: 0 }
 
