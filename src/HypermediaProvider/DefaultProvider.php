@@ -114,7 +114,8 @@ class DefaultProvider implements HypermediaProviderInterface {
         elseif (strpos($route_name, 'relationship') === FALSE) {
           $route_name_components = explode('.', $route_name);
           if (in_array($route_name_components[2], ['individual', 'collection'], TRUE)) {
-            $schema_route_name = "jsonapi_schema.{$route_name_components[1]}.{$route_name_components[2]}";
+            $route_type = $route_name_components[2] === 'individual' ? 'item' : $route_name_components[2];
+            $schema_route_name = "jsonapi_schema.{$route_name_components[1]}.{$route_type}";
           }
           else {
             $schema_route_name = "jsonapi_schema.{$route_name_components[1]}.{$route_name_components[2]}.{$route_name_components[3]}";
