@@ -59,7 +59,7 @@ class Routes implements ContainerInjectionInterface {
       $individual_document_schema_route = new Route($base_path . '/schema.json');
       $individual_document_schema_route->addDefaults([
         RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . ':getDocumentSchema',
-        static::ROUTE_TYPE_PARAMETER_KEY => 'individual',
+        static::ROUTE_TYPE_PARAMETER_KEY => 'item',
         static::RESOURCE_TYPE_PARAMETER_KEY => $resource_type_name,
       ]);
       $collection_document_schema_route = new Route($base_path . '/collection/schema.json');
@@ -71,13 +71,13 @@ class Routes implements ContainerInjectionInterface {
       $resource_object_schema_route = new Route($base_path . '/resource/schema.json');
       $resource_object_schema_route->addDefaults([
         RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . ':getResourceObjectSchema',
-        static::ROUTE_TYPE_PARAMETER_KEY => 'individual',
+        static::ROUTE_TYPE_PARAMETER_KEY => 'type',
         static::RESOURCE_TYPE_PARAMETER_KEY => $resource_type_name,
       ]);
       if ($resource_type->isLocatable()) {
         $jsonapi_schema_routes->add("jsonapi_schema.$resource_type_name.collection", $collection_document_schema_route);
       }
-      $jsonapi_schema_routes->add("jsonapi_schema.$resource_type_name.individual", $individual_document_schema_route);
+      $jsonapi_schema_routes->add("jsonapi_schema.$resource_type_name.item", $individual_document_schema_route);
       $jsonapi_schema_routes->add("jsonapi_schema.$resource_type_name.type", $resource_object_schema_route);
       foreach ($resource_type->getRelatableResourceTypes() as $public_field_name => $target_resource_types) {
         if ($resource_type->isInternal() || !Routes::hasNonInternalTargetResourceTypes($target_resource_types)) {
@@ -93,7 +93,7 @@ class Routes implements ContainerInjectionInterface {
         $related_document_schema_route = new Route($base_path . "/resource/relationships/$public_field_name/related/schema.json");
         $related_document_schema_route->addDefaults([
           RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . ':getDocumentSchema',
-          static::ROUTE_TYPE_PARAMETER_KEY => $is_to_one_relationship ? 'individual' : 'collection',
+          static::ROUTE_TYPE_PARAMETER_KEY => $is_to_one_relationship ? 'item' : 'collection',
           static::RESOURCE_TYPE_PARAMETER_KEY => count($public_target_resource_type_names) > 1
             ? $public_target_resource_type_names
             : reset($public_target_resource_type_names),

@@ -56,7 +56,7 @@ class JsonApiSchemaController extends ControllerBase {
       ? ['anyOf' => array_map($get_schema_ref, $resource_type)]
       : $get_schema_ref($resource_type);
     switch ($route_type) {
-      case 'individual':
+      case 'item':
         $schema['definitions']['data'] = $type_schema;
         break;
       case 'collection':

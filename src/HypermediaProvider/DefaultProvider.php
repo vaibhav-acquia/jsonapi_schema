@@ -3,10 +3,13 @@
 namespace Drupal\jsonapi_schema\HypermediaProvider;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Routing\RequestContext;
 use Drupal\Core\Routing\Router;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
 use Drupal\jsonapi\JsonApiResource\JsonApiDocumentTopLevel;
 use Drupal\jsonapi\JsonApiResource\Link;
@@ -14,6 +17,7 @@ use Drupal\jsonapi\JsonApiResource\LinkCollection;
 use Drupal\jsonapi\JsonApiResource\ResourceObject;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
 use Drupal\jsonapi_hypermedia\HypermediaProviderInterface;
+use Drupal\jsonapi_schema\Routing\Routes;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Exception\MethodNotAllowedException;
@@ -24,6 +28,8 @@ use Symfony\Component\Routing\Exception\MethodNotAllowedException;
  * @internal
  */
 class DefaultProvider implements HypermediaProviderInterface {
+
+  use StringTranslationTrait;
 
   /**
    * @var \Drupal\Core\Routing\Router
@@ -37,11 +43,17 @@ class DefaultProvider implements HypermediaProviderInterface {
   protected $resourceTypeRepository;
 
   /**
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
    * DefaultProvider constructor.
    */
-  public function __construct(Router $router, ResourceTypeRepositoryInterface $resource_type_repository) {
+  public function __construct(Router $router, ResourceTypeRepositoryInterface $resource_type_repository, EntityTypeManagerInterface $entity_type_manager) {
     $this->router = $router;
     $this->resourceTypeRepository = $resource_type_repository;
+    $this->entityTypeManager = $entity_type_manager;
   }
 
   /**
@@ -130,15 +142,42 @@ class DefaultProvider implements HypermediaProviderInterface {
         $resource_type = $this->resourceTypeRepository->getByTypeName($resource_type_name);
         $schema_route_name = $resource_type->isLocatable()
           ? "jsonapi_schema.{$resource_type_name}.collection"
-          : "jsonapi_schema.{$resource_type_name}.individual";
+          : "jsonapi_schema.{$resource_type_name}.item";
         $schema_url = Url::fromRoute($schema_route_name);
         $schema_href = $schema_url->setAbsolute()->toString(TRUE);
-        $target_attributes = NestedArray::mergeDeep($link->getTargetAttributes(), ['linkParams' => ['describedBy' => $schema_href->getGeneratedUrl()]]);
+        $schema_title = (string) $this->getSchemaTitle($schema_url);
+        $target_attributes = NestedArray::mergeDeep($link->getTargetAttributes(), [
+          'linkParams' => [
+            'title' => $schema_title,
+            'describedBy' => $schema_href->getGeneratedUrl(),
+          ],
+        ]);
         $link = new Link(CacheableMetadata::createFromObject($link)->addCacheableDependency($schema_href), $link->getUri(), $link->getLinkRelationTypes(), $target_attributes);
         $link_collection = $link_collection->withLink($key, $link);
       }
     }
     return $link_collection;
+  }
+
+  protected function getSchemaTitle(Url $schema_url) {
+    $route = $this->router->getRouteCollection()->get($schema_url->getRouteName());
+    $resource_type_name = $route->getDefault(Routes::RESOURCE_TYPE_PARAMETER_KEY);
+    $resource_type = $this->resourceTypeRepository->getByTypeName($resource_type_name);
+    $route_type = $route->getDefault(Routes::ROUTE_TYPE_PARAMETER_KEY);
+    $entity_type = $this->entityTypeManager->getDefinition($resource_type->getEntityTypeId());
+    $entity_type_label = $route_type === 'collection' ? $entity_type->getPluralLabel() : $entity_type->getSingularLabel();
+    if ($bundle_type = $entity_type->getBundleEntityType()) {
+      $bundle = $this->entityTypeManager->getStorage($bundle_type)->load($resource_type->getBundle());
+      return $this->t(rtrim('@bundle_label @entity_type_label' . ($route_type === 'type' ? ' object' : '')), [
+        '@bundle_label' => Unicode::ucfirst($bundle->label()),
+        '@entity_type_label' => $entity_type_label,
+      ]);
+    }
+    else {
+      return $this->t(rtrim('@entity_type_label' . ($route_type === 'type' ? ' object' : '')), [
+        '@entity_type_label' => Unicode::ucfirst($entity_type_label),
+      ]);
+    }
   }
 
   protected function getRouteNameFromLink(Link $link) {
