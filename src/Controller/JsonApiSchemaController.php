@@ -113,14 +113,6 @@ class JsonApiSchemaController extends ControllerBase {
       'allOf' => [
         [
           'type' => 'object',
-          'properties' => [
-            'attributes' => [
-              '$ref' => '#/definitions/attributes',
-            ],
-            'relationships' => [
-              '$ref' => '#/definitions/relationships',
-            ],
-          ],
         ],
         [
           '$ref' => static::JSONAPI_BASE_SCHEMA_URI . '#/definitions/resource',
@@ -138,7 +130,7 @@ class JsonApiSchemaController extends ControllerBase {
     if (empty($resource_attributes)) {
       return $schema;
     }
-    $schema['properties']['attributes'] = [
+    $schema['allOf'][0]['properties']['attributes'] = [
       '$ref' => '#/definitions/attributes',
     ];
     $normalizer = $this->normalizer;
@@ -166,6 +158,9 @@ class JsonApiSchemaController extends ControllerBase {
     if (empty($resource_relationships)) {
       return $schema;
     }
+    $schema['allOf'][0]['properties']['relationships'] = [
+      '$ref' => '#/definitions/relationships',
+    ];
     $relationships = array_reduce($resource_relationships, function ($relationships, TypedResourceTypeRelationship $relationship) use ($resource_type, $cacheability) {
       $field_name = $relationship->getPublicFieldName();
       $resource_type_name = $resource_type->getTypeName();
