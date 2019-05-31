@@ -7,9 +7,12 @@ use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Url;
+use Drupal\jsonapi\ResourceType\ResourceFieldInterface;
+use Drupal\jsonapi\ResourceType\ResourceRelationship;
 use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class JsonApiSchemaController extends ControllerBase {
 
@@ -112,12 +115,12 @@ class JsonApiSchemaController extends ControllerBase {
       ],
     ];
     $cacheability = new CacheableMetadata();
-    $schema = $this->addAttributesSchema($schema, $resource_type);
+    $schema = $this->addFieldsSchema($schema, $resource_type);
     $schema = $this->addRelationshipsSchemaLinks($schema, $resource_type, $cacheability);
     return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
   }
 
-  protected function addAttributesSchema(array $schema, ResourceType $resource_type) {
+  protected function addFieldsSchema(array $schema, ResourceType $resource_type) {
     $resource_attributes = $resource_type->getResourceFields();
     if (empty($resource_attributes)) {
       return $schema;
