@@ -180,11 +180,6 @@ class JsonApiSchemaController extends ControllerBase {
       $drilled_object = $drill_prop_into_a_nested_object_schema('links.related.meta.linkParams.describedBy', ['const' => $related_schema_uri->getGeneratedUrl()]);
       return array_merge($relationships, [$field_name => $drilled_object]);
     }, []);
-    $schema['definitions']['relationships'] = [
-      'type' => 'object',
-      'properties' => $relationships,
-      'additionalProperties' => FALSE,
-    ];
     $schema['definitions']['relationships'] = NestedArray::mergeDeep(
       empty($schema['definitions']['relationships']) ? [] : $schema['definitions']['relationships'],
       ['properties' => $relationships]
