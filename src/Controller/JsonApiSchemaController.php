@@ -7,10 +7,12 @@ use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Url;
-use Drupal\jsonapi\ResourceType\ResourceFieldInterface;
-use Drupal\jsonapi\ResourceType\ResourceRelationship;
+use Drupal\jsonapi\ResourceType\ResourceTypeFieldInterface;
 use Drupal\jsonapi\ResourceType\ResourceType;
+use Drupal\jsonapi\ResourceType\ResourceTypeRelationshipInterface;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
+use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeFieldInterface;
+use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeRelationship;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -140,11 +142,11 @@ class JsonApiSchemaController extends ControllerBase {
       '$ref' => '#/definitions/attributes',
     ];
     $normalizer = $this->normalizer;
-    $fields = array_reduce($resource_attributes, function ($carry, ResourceFieldInterface $attribute) use ($normalizer){
+    $fields = array_reduce($resource_attributes, function ($carry, TypedResourceTypeFieldInterface $attribute) use ($normalizer){
       $json_schema = $normalizer->normalize(
         $attribute->getDataDefinition(),
         'schema_json',
-        ['name' => $attribute->getAlias()]
+        ['name' => $attribute->getPublicFieldName()]
       );
       return NestedArray::mergeDeep($carry, $json_schema);
     }, []);
@@ -164,8 +166,8 @@ class JsonApiSchemaController extends ControllerBase {
     if (empty($resource_relationships)) {
       return $schema;
     }
-    $relationships = array_reduce($resource_relationships, function ($relationships, ResourceRelationship $relationship) use ($resource_type, $cacheability) {
-      $field_name = $relationship->getAlias();
+    $relationships = array_reduce($resource_relationships, function ($relationships, TypedResourceTypeRelationship $relationship) use ($resource_type, $cacheability) {
+      $field_name = $relationship->getPublicFieldName();
       $resource_type_name = $resource_type->getTypeName();
       $related_route_name = "jsonapi_schema.{$resource_type_name}.$field_name.related";
       $related_schema_uri = Url::fromRoute($related_route_name)->setAbsolute()->toString(TRUE);
