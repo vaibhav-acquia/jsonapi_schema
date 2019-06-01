@@ -11,6 +11,7 @@ use Drupal\jsonapi\ResourceType\ResourceFieldInterface;
 use Drupal\jsonapi\ResourceType\ResourceRelationship;
 use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
@@ -40,6 +41,16 @@ class JsonApiSchemaController extends ControllerBase {
   public function __construct(ResourceTypeRepositoryInterface $resource_type_repository, NormalizerInterface $normalizer) {
     $this->resourceTypeRepository = $resource_type_repository;
     $this->normalizer = $normalizer;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('jsonapi.resource_type.repository'),
+      $container->get('serializer')
+    );
   }
 
   public function getDocumentSchema(Request $request, $resource_type, $route_type) {

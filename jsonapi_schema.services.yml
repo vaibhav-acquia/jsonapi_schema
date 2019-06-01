@@ -1,10 +1,4 @@
 services:
-  jsonapi_schema.controller:
-    class: Drupal\jsonapi_schema\Controller\JsonApiSchemaController
-    arguments:
-      - '@jsonapi.resource_type.repository'
-      - '@serializer'
-
   jsonapi_schema.jsonapi_hypermedia_provider:
     class: Drupal\jsonapi_schema\HypermediaProvider\DefaultProvider
     arguments:

@@ -4,10 +4,10 @@ namespace Drupal\jsonapi_schema\Routing;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
-use Drupal\jsonapi\Access\RelationshipFieldAccess;
 use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
 use Drupal\jsonapi\Routing\Routes as JsonApiRoutes;
+use Drupal\jsonapi_schema\Controller\JsonApiSchemaController;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Routing\Route;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\RouteCollection;
 
 class Routes implements ContainerInjectionInterface {
 
-  const CONTROLLER_NAME = 'jsonapi_schema.controller';
+  const CONTROLLER_NAME = JsonApiSchemaController::class;
 
   const RESOURCE_TYPE_PARAMETER_KEY = 'resource_type';
 
@@ -58,19 +58,19 @@ class Routes implements ContainerInjectionInterface {
       $base_path = $this->jsonApiBasePath . $resource_type->getPath();
       $individual_document_schema_route = new Route($base_path . '/schema.json');
       $individual_document_schema_route->addDefaults([
-        RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . ':getDocumentSchema',
+        RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getDocumentSchema',
         static::ROUTE_TYPE_PARAMETER_KEY => 'item',
         static::RESOURCE_TYPE_PARAMETER_KEY => $resource_type_name,
       ]);
       $collection_document_schema_route = new Route($base_path . '/collection/schema.json');
       $collection_document_schema_route->addDefaults([
-        RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . ':getDocumentSchema',
+        RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getDocumentSchema',
         static::ROUTE_TYPE_PARAMETER_KEY => 'collection',
         static::RESOURCE_TYPE_PARAMETER_KEY => $resource_type_name,
       ]);
       $resource_object_schema_route = new Route($base_path . '/resource/schema.json');
       $resource_object_schema_route->addDefaults([
-        RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . ':getResourceObjectSchema',
+        RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getResourceObjectSchema',
         static::ROUTE_TYPE_PARAMETER_KEY => 'type',
         static::RESOURCE_TYPE_PARAMETER_KEY => $resource_type_name,
       ]);
@@ -92,7 +92,7 @@ class Routes implements ContainerInjectionInterface {
         }, $public_target_resource_types);
         $related_document_schema_route = new Route($base_path . "/resource/relationships/$public_field_name/related/schema.json");
         $related_document_schema_route->addDefaults([
-          RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . ':getDocumentSchema',
+          RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getDocumentSchema',
           static::ROUTE_TYPE_PARAMETER_KEY => $is_to_one_relationship ? 'item' : 'collection',
           static::RESOURCE_TYPE_PARAMETER_KEY => count($public_target_resource_type_names) > 1
             ? $public_target_resource_type_names
