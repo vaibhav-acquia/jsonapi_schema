@@ -113,6 +113,9 @@ class JsonApiSchemaController extends ControllerBase {
       'allOf' => [
         [
           'type' => 'object',
+          'properties' => [
+            'type' => ['$ref' => '#definitions/type'],
+          ],
         ],
         [
           '$ref' => static::JSONAPI_BASE_SCHEMA_URI . '#/definitions/resource',
