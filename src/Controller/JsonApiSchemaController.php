@@ -118,6 +118,9 @@ class JsonApiSchemaController extends ControllerBase {
           '$ref' => static::JSONAPI_BASE_SCHEMA_URI . '#/definitions/resource',
         ]
       ],
+      'definitions' => [
+        'type'  => ['const' => $resource_type->getTypeName()],
+      ],
     ];
     $cacheability = new CacheableMetadata();
     $schema = $this->addFieldsSchema($schema, $resource_type);
