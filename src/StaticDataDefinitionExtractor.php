@@ -86,6 +86,9 @@ class StaticDataDefinitionExtractor {
    */
   public function extract(EntityTypeInterface $entity_type, $bundle) {
     $data_type = sprintf('entity:%s:%s', $entity_type->id(), $bundle);
+    if (isset($this->definitions[$data_type])) {
+      return $this->definitions[$data_type];
+    }
     if ($entity_type instanceof ContentEntityTypeInterface) {
       $definition = $this->extractContentEntityType($entity_type, $bundle);
     }
@@ -100,10 +103,7 @@ class StaticDataDefinitionExtractor {
   }
 
   public function extractField(EntityTypeInterface $entity_type, $bundle, $field_name) {
-    $data_type = sprintf('entity:%s:%s', $entity_type->id(), $bundle);
-    $definition = isset($this->definition[$data_type])
-      ? $this->definitions[$data_type]
-      : $this->extract($entity_type, $bundle);
+    $definition = $this->extract($entity_type, $bundle);
     return $definition->getPropertyDefinition($field_name)
       ?: DataDefinition::createFromDataType('undefined');
   }
