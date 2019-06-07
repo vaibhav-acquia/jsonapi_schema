@@ -47,7 +47,7 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
       $property['minItems'] = 1;
     }
 
-    if (empty($context['is_multiple'])) {
+    if (!empty($context['cardinality']) && $context['cardinality'] === 1) {
       $single_property = $property['items'];
       unset($property['items']);
       unset($property['type']);

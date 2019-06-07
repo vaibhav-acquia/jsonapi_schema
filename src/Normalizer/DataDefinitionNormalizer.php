@@ -20,6 +20,8 @@ use Drupal\serialization\Normalizer\NormalizerBase;
  */
 class DataDefinitionNormalizer extends NormalizerBase {
 
+  const JSON_TYPES = ['null', 'boolean', 'string', 'number', 'integer', 'array', 'object'];
+
   /**
    * The formats that the Normalizer can handle.
    *
@@ -33,6 +35,13 @@ class DataDefinitionNormalizer extends NormalizerBase {
    * @var string
    */
   protected $supportedInterfaceOrClass = DataDefinitionInterface::class;
+
+  /**
+   * The supported data type.
+   *
+   * @var string[]
+   */
+  protected $supportedDataTypes = [];
 
   /**
    * {@inheritdoc}
@@ -64,6 +73,11 @@ class DataDefinitionNormalizer extends NormalizerBase {
     }
 
     $normalized = ['properties' => []];
+    if (!in_array($property['type'], static::JSON_TYPES)) {
+      // Unable to find the correct type.
+      \Drupal::logger('jsonapi_schema')->error('{type} is not a valid type for a JSON document.', ['type' => $property['type']]);
+      $property = (object) [];
+    }
     $normalized['properties'][$context['name']] = $property;
     if ($this->requiredProperty($entity)) {
       $normalized['required'][] = $context['name'];
@@ -88,9 +102,15 @@ class DataDefinitionNormalizer extends NormalizerBase {
    *   Discrete values of the property definition
    */
   protected function extractPropertyData(DataDefinitionInterface $property, array $context = []) {
-    return \Drupal::service('plugin.manager.jsonapi_schema.type_mapper')
-      ->createInstance($property->getDataType())
-      ->getMappedValue($property);
+    $value = ['type' => $property->getDataType()];
+    if ($item = $property->getLabel()) {
+      $value['title'] = $item;
+    }
+    if ($item = $property->getDescription()) {
+      $value['description'] = addslashes(strip_tags($item));
+    }
+
+    return $value;
   }
 
   /**
@@ -138,6 +158,15 @@ class DataDefinitionNormalizer extends NormalizerBase {
    */
   protected function requiredProperty(DataDefinitionInterface $property) {
     return $property->isReadOnly() || $property->isRequired();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function supportsNormalization($data, $format = NULL) {
+    return parent::supportsNormalization($data, $format)
+      && $data instanceof DataDefinitionInterface
+      && (empty($this->supportedDataTypes) || in_array($data->getDataType(), $this->supportedDataTypes));
   }
 
   /**

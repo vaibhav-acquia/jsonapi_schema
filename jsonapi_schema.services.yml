@@ -17,10 +17,6 @@ services:
     decorates: jsonapi.resource_field.factory
     arguments: ['@jsonapi_schema.resource_field.factory.inner', '@jsonapi_schema.static_data_definition_extractor']
 
-  plugin.manager.jsonapi_schema.type_mapper:
-    class: Drupal\jsonapi_schema\Plugin\TypeMapperPluginManager
-    arguments: ['@container.namespaces', '@module_handler']
-
   # ----------------------------------------------------------------------------
   # - NORMALIZERS
   # ----------------------------------------------------------------------------
@@ -41,7 +37,32 @@ services:
     class: Drupal\jsonapi_schema\Normalizer\ListDataDefinitionNormalizer
     tags:
       - { name: normalizer, priority: 20 }
-  serializer.normalizer.data_definition.schema_json:
-    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionNormalizer
+  # Data definition normalizers.
+  serializer.normalizer.data_definition.schema_json.string:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionStringNormalizer
     tags:
       - { name: normalizer, priority: 10 }
+  serializer.normalizer.data_definition.schema_json.email:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionEmailNormalizer
+    tags:
+      - { name: normalizer, priority: 10 }
+  serializer.normalizer.data_definition.schema_json.datetime_iso8601:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionDatetimeNormalizer
+    tags:
+      - { name: normalizer, priority: 10 }
+  serializer.normalizer.data_definition.schema_json.entity_reference:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionEntityReferenceNormalizer
+    tags:
+      - { name: normalizer, priority: 10 }
+  serializer.normalizer.data_definition.schema_json.timestamp:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionTimestampNormalizer
+    tags:
+      - { name: normalizer, priority: 10 }
+  serializer.normalizer.data_definition.schema_json.undefined:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionUndefinedNormalizer
+    tags:
+      - { name: normalizer, priority: 10 }
+  serializer.normalizer.data_definition.schema_json.fallback:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionNormalizer
+    tags:
+      - { name: normalizer, priority: 5 }
