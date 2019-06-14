@@ -155,7 +155,7 @@ class JsonApiSchemaController extends ControllerBase {
     if (!empty($field_definitions['relationships'])) {
       $field_definitions['relationships']['additionalProperties'] = FALSE;
     }
-    $schema['definitions'] = $field_definitions;
+    $schema['definitions'] = NestedArray::mergeDeep($schema['definitions'], $field_definitions);
     return $schema;
   }
 
