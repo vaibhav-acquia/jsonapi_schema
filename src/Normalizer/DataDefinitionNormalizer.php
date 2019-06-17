@@ -59,7 +59,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
     }
 
     $property = $this->extractPropertyData($entity, $context);
-    if (!empty($context['parent']) && $context['name'] == 'value') {
+    if (!is_object($property) && !empty($context['parent']) && $context['name'] == 'value') {
       if ($maxLength = $context['parent']->getSetting('max_length')) {
         $property['maxLength'] = $maxLength;
       }
@@ -73,7 +73,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
     }
 
     $normalized = ['properties' => []];
-    if (!in_array($property['type'], static::JSON_TYPES)) {
+    if (!is_object($property) && !in_array($property['type'], static::JSON_TYPES)) {
       // Unable to find the correct type.
       \Drupal::logger('jsonapi_schema')->error('{type} is not a valid type for a JSON document.', ['type' => $property['type']]);
       $property = (object) [];
