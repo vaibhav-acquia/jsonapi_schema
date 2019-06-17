@@ -18,7 +18,7 @@ class DataDefinitionUndefinedNormalizer extends DataDefinitionNormalizer {
    * {@inheritdoc}
    */
   protected function extractPropertyData(DataDefinitionInterface $property, array $context = []) {
-    return [];
+    return (object) [];
   }
 
 }
