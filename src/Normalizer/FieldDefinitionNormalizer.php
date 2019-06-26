@@ -41,7 +41,7 @@ class FieldDefinitionNormalizer extends ListDataDefinitionNormalizer {
       $default_value = $field_type == "boolean" ? boolval($default_value) : $default_value;
       NestedArray::setValue(
         $normalized,
-        ['properties', 'attributes', 'properties', $field_name, 'default'],
+        ['properties', $field_name, 'default'],
         $default_value
       );
     }
@@ -51,7 +51,7 @@ class FieldDefinitionNormalizer extends ListDataDefinitionNormalizer {
     if ($cardinality != FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && $cardinality != 1) {
       NestedArray::setValue(
         $normalized,
-        ['properties', 'attributes', 'properties', $field_name, 'maxItems'],
+        ['properties', $field_name, 'maxItems'],
         $cardinality
       );
     }
