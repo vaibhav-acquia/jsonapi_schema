@@ -67,10 +67,7 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
       $normalized['required'][] = $public_name;
     }
 
-    return [
-      'type' => 'object',
-      'properties' => ['attributes' => $normalized],
-    ];
+    return $normalized;
   }
 
   /**

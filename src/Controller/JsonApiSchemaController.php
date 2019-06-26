@@ -11,6 +11,7 @@ use Drupal\jsonapi\ResourceType\ResourceTypeFieldInterface;
 use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\ResourceType\ResourceTypeRelationshipInterface;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
+use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeAttribute;
 use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeFieldInterface;
 use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeRelationship;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -140,13 +141,19 @@ class JsonApiSchemaController extends ControllerBase {
       '$ref' => '#/definitions/attributes',
     ];
     $normalizer = $this->normalizer;
-    $fields = array_reduce($resource_attributes, function ($carry, TypedResourceTypeFieldInterface $attribute) use ($normalizer){
-      $json_schema = $normalizer->normalize(
-        $attribute->getDataDefinition(),
+    $fields = array_reduce($resource_attributes, function ($carry, TypedResourceTypeFieldInterface $field) use ($normalizer){
+      $field_schema = $normalizer->normalize(
+        $field->getDataDefinition(),
         'schema_json',
-        ['name' => $attribute->getPublicFieldName()]
+        ['name' => $field->getPublicFieldName()]
       );
-      return NestedArray::mergeDeep($carry, $json_schema);
+      $fields_member = $field instanceof TypedResourceTypeAttribute ? 'attributes' : 'relationships';
+      return NestedArray::mergeDeep($carry, [
+        'type' => 'object',
+        'properties' => [
+          $fields_member => $field_schema,
+        ],
+      ]);
     }, []);
     $field_definitions = NestedArray::getValue($fields, ['properties']) ?: [];
     if (!empty($field_definitions['attributes'])) {
