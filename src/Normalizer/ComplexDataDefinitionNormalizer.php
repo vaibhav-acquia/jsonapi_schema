@@ -3,6 +3,7 @@
 namespace Drupal\jsonapi_schema\Normalizer;
 
 use Drupal\Core\TypedData\ComplexDataDefinitionInterface;
+use Drupal\Core\TypedData\DataDefinitionInterface;
 use Drupal\Core\TypedData\DataReferenceTargetDefinition;
 use Drupal\Component\Utility\NestedArray;
 
@@ -33,7 +34,9 @@ class ComplexDataDefinitionNormalizer extends DataDefinitionNormalizer {
     $normalized['type'] = 'object';
 
     // Retrieve 'properties' and possibly 'required' nested arrays.
-    $property_definitions = $entity->getPropertyDefinitions();
+    $property_definitions = array_filter($entity->getPropertyDefinitions(), function (DataDefinitionInterface $item) {
+      return !$item->isInternal();
+    });
     $properties = $this->normalizeProperties(
       $property_definitions,
       $format,
