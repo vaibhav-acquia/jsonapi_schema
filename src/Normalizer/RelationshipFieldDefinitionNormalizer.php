@@ -64,7 +64,7 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
     assert($entity instanceof FieldDefinitionInterface);
     $normalized = [
       'description' => t('Entity relationships'),
-      'properties' => [$context['name'] => $this->normalizeRelationship($entity)],
+      'properties' => [$context['name'] => $this->normalizeRelationship($entity, $format, $context)],
       'type' => 'object',
     ];
     // Specify non-contextual default value as an example.
@@ -91,7 +91,7 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
    * @return array
    *   The normalized relationship.
    */
-  protected function normalizeRelationship(FieldDefinitionInterface $field_definition) {
+  protected function normalizeRelationship(FieldDefinitionInterface $field_definition, $format = NULL, $context = []) {
     $resource_type_repository = \Drupal::service('jsonapi.resource_type.repository');
     assert($resource_type_repository instanceof ResourceTypeRepositoryInterface);
     // A relationship has very similar schema every time.
@@ -131,10 +131,12 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
         return $resource_type->getTypeName();
       }, array_filter($target_resource_types));
     }
+    $meta = $this->serializer->normalize($field_definition->getItemDefinition(), $format, $context);
     if ($cardinality == 1) {
       $data = $resource_identifier_object;
       if (!empty($enum)) {
         $data['properties']['type']['enum'] = $enum;
+        $data['properties']['meta'] = $meta;
       }
     }
     else {
@@ -144,6 +146,7 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
       ];
       if (!empty($enum)) {
         $data['items']['properties']['type']['enum'] = $enum;
+        $data['items']['properties']['meta'] = $meta;
       }
     }
     $normalized = [
