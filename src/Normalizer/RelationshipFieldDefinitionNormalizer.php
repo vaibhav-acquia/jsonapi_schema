@@ -63,24 +63,20 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
     $context['cardinality'] = $cardinality;
     assert($entity instanceof FieldDefinitionInterface);
     $normalized = [
-      'properties' => [
-        'relationships' => [
-          'description' => t('Entity relationships'),
-          'properties' => [$context['name'] => $this->normalizeRelationship($entity)],
-          'type' => 'object',
-        ],
-      ],
+      'description' => t('Entity relationships'),
+      'properties' => [$context['name'] => $this->normalizeRelationship($entity)],
+      'type' => 'object',
     ];
     // Specify non-contextual default value as an example.
     $default_value = $entity->getDefaultValueLiteral();
     if (!empty($default_value)) {
-      $normalized['properties']['relationships']['properties'][$context['name']]['default'] = $default_value;
+      $normalized['properties'][$context['name']]['default'] = $default_value;
     }
 
     // The cardinality is the configured maximum number of values the field can
     // contain. If unlimited, we do not include a maxItems attribute.
     if ($cardinality != FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && $cardinality != 1) {
-      $normalized['properties']['relationships']['properties'][$context['name']]['maxItems'] = $cardinality;
+      $normalized['properties'][$context['name']]['maxItems'] = $cardinality;
     }
 
     return $normalized;

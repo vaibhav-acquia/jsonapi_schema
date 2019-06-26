@@ -18,7 +18,9 @@ class DataDefinitionUndefinedNormalizer extends DataDefinitionNormalizer {
    * {@inheritdoc}
    */
   protected function extractPropertyData(DataDefinitionInterface $property, array $context = []) {
-    return (object) isset($context['name']) ? ['title' => $context['name']] : [];
+    return isset($context['name'])
+      ? (object) ['title' => $context['name']]
+      : (object) [];
   }
 
 }
