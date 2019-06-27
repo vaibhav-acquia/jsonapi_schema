@@ -72,6 +72,10 @@ class DataDefinitionNormalizer extends NormalizerBase {
       }
     }
 
+    if (!is_object($property) && !isset($property['title']) && isset($context['name'])) {
+      $property['title'] = $context['name'];
+    }
+
     $normalized = ['properties' => []];
     if (!is_object($property) && !in_array($property['type'], static::JSON_TYPES)) {
       // Unable to find the correct type.
