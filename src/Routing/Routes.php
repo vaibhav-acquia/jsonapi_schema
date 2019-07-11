@@ -116,7 +116,7 @@ class Routes implements ContainerInjectionInterface {
    *   TRUE if there is at least one non-internal resource type in the given
    *   array; FALSE otherwise.
    */
-  protected static function hasNonInternalTargetResourceTypes(array $resource_types) {
+  public static function hasNonInternalTargetResourceTypes(array $resource_types) {
     return array_reduce($resource_types, function ($carry, ResourceType $target) {
       return $carry || !$target->isInternal();
     }, FALSE);

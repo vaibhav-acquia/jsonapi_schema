@@ -14,6 +14,7 @@ use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
 use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeAttribute;
 use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeFieldInterface;
 use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeRelationship;
+use Drupal\jsonapi_schema\Routing\Routes;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -175,6 +176,9 @@ class JsonApiSchemaController extends ControllerBase {
       '$ref' => '#/definitions/relationships',
     ];
     $relationships = array_reduce($resource_relationships, function ($relationships, TypedResourceTypeRelationship $relationship) use ($resource_type, $cacheability) {
+      if ($resource_type->isInternal() || !Routes::hasNonInternalTargetResourceTypes($relationship->getRelatableResourceTypes())) {
+        return $relationships;
+      }
       $field_name = $relationship->getPublicFieldName();
       $resource_type_name = $resource_type->getTypeName();
       $related_route_name = "jsonapi_schema.{$resource_type_name}.$field_name.related";
