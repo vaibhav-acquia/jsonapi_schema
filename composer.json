@@ -21,5 +21,12 @@
     "support": {
         "issues": "https://www.drupal.org/project/issues/jsonapi_schema",
         "source": "https://git.drupalcode.org/project/jsonapi_schema"
+    },
+    "extra": {
+        "patches": {
+            "drupal/core": {
+                "3014277 - ResourceTypes should know about their fields": "https://www.drupal.org/files/issues/2019-06-06/3014277--resource-fields--36.patch"
+            }
+        }
     }
 }
