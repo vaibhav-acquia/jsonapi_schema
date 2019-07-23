@@ -6,10 +6,9 @@ use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
-use Drupal\jsonapi\ResourceType\ResourceTypeFieldInterface;
 use Drupal\jsonapi\ResourceType\ResourceType;
-use Drupal\jsonapi\ResourceType\ResourceTypeRelationshipInterface;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
 use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeAttribute;
 use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeFieldInterface;
@@ -25,6 +24,11 @@ class JsonApiSchemaController extends ControllerBase {
 
   const JSONAPI_BASE_SCHEMA_URI = 'https://jsonapi.org/schema';
 
+  /**
+   * The JSON:API resource type repository.
+   *
+   * @var \Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface
+   */
   protected $resourceTypeRepository;
 
   /**
@@ -35,16 +39,26 @@ class JsonApiSchemaController extends ControllerBase {
   protected $normalizer;
 
   /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
    * JsonApiSchemaController constructor.
    *
    * @param \Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface $resource_type_repository
    *   The JSON:API resource type repository.
    * @param \Symfony\Component\Serializer\Normalizer\NormalizerInterface $normalizer
    *   The serializer.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    */
-  public function __construct(ResourceTypeRepositoryInterface $resource_type_repository, NormalizerInterface $normalizer) {
+  public function __construct(ResourceTypeRepositoryInterface $resource_type_repository, NormalizerInterface $normalizer, EntityTypeManagerInterface $entity_type_manager) {
     $this->resourceTypeRepository = $resource_type_repository;
     $this->normalizer = $normalizer;
+    $this->entityTypeManager = $entity_type_manager;
   }
 
   /**
@@ -53,7 +67,8 @@ class JsonApiSchemaController extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('jsonapi.resource_type.repository'),
-      $container->get('serializer')
+      $container->get('serializer'),
+      $container->get('entity_type.manager')
     );
   }
 
@@ -112,6 +127,7 @@ class JsonApiSchemaController extends ControllerBase {
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
       '$id' => $request->getUri(),
+      'title' => $this->getResourceSchemaTitleFromResourceType($resource_type),
       'allOf' => [
         [
           'type' => 'object',
@@ -197,6 +213,16 @@ class JsonApiSchemaController extends ControllerBase {
       ['properties' => $relationships]
     );
     return $schema;
+  }
+
+  protected function getResourceSchemaTitleFromResourceType(ResourceType $resource_type) {
+    $entity_type = $this->entityTypeManager->getDefinition($resource_type->getEntityTypeID());
+    $bundle_entity_type_id = $entity_type->getBundleEntityType();
+    if (is_null($bundle_entity_type_id)) {
+      return $entity_type->getLabel();
+    }
+    $bundle = $this->entityTypeManager->getStorage($bundle_entity_type_id)->load($resource_type->getBundle());
+    return $bundle->label();
   }
 
 }
