@@ -9,11 +9,12 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
 use Drupal\jsonapi\ResourceType\ResourceType;
+use Drupal\jsonapi\ResourceType\ResourceTypeAttribute;
+use Drupal\jsonapi\ResourceType\ResourceTypeField;
+use Drupal\jsonapi\ResourceType\ResourceTypeRelationship;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
-use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeAttribute;
-use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeFieldInterface;
-use Drupal\jsonapi_schema\ResourceType\TypedResourceTypeRelationship;
 use Drupal\jsonapi_schema\Routing\Routes;
+use Drupal\jsonapi_schema\StaticDataDefinitionExtractor;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -46,6 +47,13 @@ class JsonApiSchemaController extends ControllerBase {
   protected $entityTypeManager;
 
   /**
+   * The static data definition extractor.
+   *
+   * @var \Drupal\jsonapi_schema\StaticDataDefinitionExtractor
+   */
+  protected $staticDataDefinitionExtractor;
+
+  /**
    * JsonApiSchemaController constructor.
    *
    * @param \Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface $resource_type_repository
@@ -55,10 +63,11 @@ class JsonApiSchemaController extends ControllerBase {
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    */
-  public function __construct(ResourceTypeRepositoryInterface $resource_type_repository, NormalizerInterface $normalizer, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(ResourceTypeRepositoryInterface $resource_type_repository, NormalizerInterface $normalizer, EntityTypeManagerInterface $entity_type_manager, StaticDataDefinitionExtractor $static_data_definition_extractor) {
     $this->resourceTypeRepository = $resource_type_repository;
     $this->normalizer = $normalizer;
     $this->entityTypeManager = $entity_type_manager;
+    $this->staticDataDefinitionExtractor = $static_data_definition_extractor;
   }
 
   /**
@@ -68,7 +77,8 @@ class JsonApiSchemaController extends ControllerBase {
     return new static(
       $container->get('jsonapi.resource_type.repository'),
       $container->get('serializer'),
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('jsonapi_schema.static_data_definition_extractor'),
     );
   }
 
@@ -150,21 +160,23 @@ class JsonApiSchemaController extends ControllerBase {
   }
 
   protected function addFieldsSchema(array $schema, ResourceType $resource_type) {
-    $resource_attributes = $resource_type->getResourceFields();
-    if (empty($resource_attributes)) {
+    $resource_fields = $resource_type->getFields();
+    if (empty($resource_fields)) {
       return $schema;
     }
     $schema['allOf'][0]['properties']['attributes'] = [
       '$ref' => '#/definitions/attributes',
     ];
     $normalizer = $this->normalizer;
-    $fields = array_reduce($resource_attributes, function ($carry, TypedResourceTypeFieldInterface $field) use ($normalizer){
+    $entity_type = $this->entityTypeManager->getDefinition($resource_type->getEntityTypeId());
+    $bundle = $resource_type->getBundle();
+    $fields = array_reduce($resource_fields, function ($carry, ResourceTypeField $field) use ($normalizer, $entity_type, $bundle) {
       $field_schema = $normalizer->normalize(
-        $field->getDataDefinition(),
+        $this->staticDataDefinitionExtractor->extractField($entity_type, $bundle, $field->getInternalName()),
         'schema_json',
-        ['name' => $field->getPublicFieldName()]
+        ['name' => $field->getPublicName()]
       );
-      $fields_member = $field instanceof TypedResourceTypeAttribute ? 'attributes' : 'relationships';
+      $fields_member = $field instanceof ResourceTypeAttribute ? 'attributes' : 'relationships';
       return NestedArray::mergeDeep($carry, [
         'type' => 'object',
         'properties' => [
@@ -184,18 +196,20 @@ class JsonApiSchemaController extends ControllerBase {
   }
 
   protected static function addRelationshipsSchemaLinks(array $schema, ResourceType $resource_type, CacheableMetadata $cacheability) {
-    $resource_relationships = $resource_type->getResourceRelationships();
+    $resource_relationships = array_filter($resource_type->getFields(), function (ResourceTypeField $field) {
+      return $field instanceof ResourceTypeRelationship;
+    });
     if (empty($resource_relationships)) {
       return $schema;
     }
     $schema['allOf'][0]['properties']['relationships'] = [
       '$ref' => '#/definitions/relationships',
     ];
-    $relationships = array_reduce($resource_relationships, function ($relationships, TypedResourceTypeRelationship $relationship) use ($resource_type, $cacheability) {
+    $relationships = array_reduce($resource_relationships, function ($relationships, ResourceTypeRelationship $relationship) use ($resource_type, $cacheability) {
       if ($resource_type->isInternal() || !Routes::hasNonInternalTargetResourceTypes($relationship->getRelatableResourceTypes())) {
         return $relationships;
       }
-      $field_name = $relationship->getPublicFieldName();
+      $field_name = $relationship->getPublicName();
       $resource_type_name = $resource_type->getTypeName();
       $related_route_name = "jsonapi_schema.{$resource_type_name}.$field_name.related";
       $related_schema_uri = Url::fromRoute($related_route_name)->setAbsolute()->toString(TRUE);
