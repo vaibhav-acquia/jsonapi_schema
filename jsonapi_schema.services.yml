@@ -1,13 +1,4 @@
 services:
-  jsonapi_schema.jsonapi_hypermedia_provider:
-    class: Drupal\jsonapi_schema\HypermediaProvider\DefaultProvider
-    arguments:
-      - '@router.no_access_checks'
-      - '@jsonapi.resource_type.repository'
-      - '@entity_type.manager'
-    tags:
-      - { name: jsonapi_hypermedia_provider, priority: 0 }
-
   jsonapi_schema.static_data_definition_extractor:
     class: Drupal\jsonapi_schema\StaticDataDefinitionExtractor
     arguments: ['@typed_data_manager', '@config.typed', '@entity_field.manager']
