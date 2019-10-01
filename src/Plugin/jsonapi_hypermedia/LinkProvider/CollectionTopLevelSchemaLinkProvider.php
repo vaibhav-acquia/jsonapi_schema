@@ -9,7 +9,7 @@ use Drupal\jsonapi_hypermedia\Annotation\JsonapiHypermediaLinkProvider;
 *
 * @JsonapiHypermediaLinkProvider(
 *   id = "jsonapi_shema.top_level.collection",
-*   link_key = "describedby",
+*   link_relation_type = "describedby",
 *   link_context = {
 *     "top_level_object" = "collection",
 *   },

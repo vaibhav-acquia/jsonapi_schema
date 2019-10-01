@@ -54,7 +54,7 @@ abstract class TopLevelSchemaLinkProviderBase extends LinkProviderBase implement
     assert($context instanceof JsonApiDocumentTopLevel);
     $resource_type_name = explode('.', $this->currentRouteMatch->getRouteName())[1];
     $schema_route_name = "jsonapi_schema.{$resource_type_name}." . static::$schemaRouteType;
-    return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), new Url($schema_route_name), ['describedby']);
+    return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), new Url($schema_route_name), $this->getLinkRelationType());
   }
 
 }

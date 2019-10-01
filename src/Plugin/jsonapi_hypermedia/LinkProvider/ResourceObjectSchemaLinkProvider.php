@@ -15,7 +15,7 @@ use Drupal\jsonapi_hypermedia\Plugin\LinkProviderBase;
  *
  * @JsonapiHypermediaLinkProvider(
  *   id = "jsonapi_shema.resource_object",
- *   link_key = "describedby",
+ *   link_relation_type = "describedby",
  *   link_context = {
  *     "resource_object" = true,
  *   },
@@ -32,7 +32,7 @@ final class ResourceObjectSchemaLinkProvider extends LinkProviderBase {
     assert($context instanceof ResourceObject);
     $resource_type_name = $context->getResourceType()->getTypeName();
     $resource_schema_uri = Url::fromRoute("jsonapi_schema.$resource_type_name.type");
-    return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), $resource_schema_uri, ['describedby']);
+    return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), $resource_schema_uri, $this->getLinkRelationType());
   }
 
 }
