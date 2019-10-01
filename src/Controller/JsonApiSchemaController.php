@@ -21,7 +21,7 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class JsonApiSchemaController extends ControllerBase {
 
-  const JSON_SCHEMA_DRAFT = 'http://json-schema.org/draft-07/schema';
+  const JSON_SCHEMA_DRAFT = 'https://json-schema.org/draft/2019-09/hyper-schema';
 
   const JSONAPI_BASE_SCHEMA_URI = 'https://jsonapi.org/schema';
 
