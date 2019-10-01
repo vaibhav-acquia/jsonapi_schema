@@ -214,13 +214,22 @@ class JsonApiSchemaController extends ControllerBase {
       $related_route_name = "jsonapi_schema.{$resource_type_name}.$field_name.related";
       $related_schema_uri = Url::fromRoute($related_route_name)->setAbsolute()->toString(TRUE);
       $cacheability->addCacheableDependency($related_schema_uri);
-      $drill_prop_into_a_nested_object_schema = function ($path, $prop) {
-        return array_reduce(array_reverse(explode('.', $path)), function ($prop, $prop_name) {
-          return ['type' => 'object', 'properties' => [$prop_name => $prop]];
-        }, $prop);
-      };
-      $drilled_object = $drill_prop_into_a_nested_object_schema('links.related.meta.linkParams.describedby', ['const' => $related_schema_uri->getGeneratedUrl()]);
-      return array_merge($relationships, [$field_name => $drilled_object]);
+      return NestedArray::mergeDeep($relationships, [
+        $field_name => [
+          'links' => [
+            [
+              'href' => '{instanceHref}',
+              'rel' => 'related',
+              'targetMediaType' => 'application/vnd.api+json',
+              'targetSchema' => $related_schema_uri->getGeneratedUrl(),
+              'templatePointers' => [
+                'instanceHref' => '/links/related/href',
+              ],
+              'templateRequired' => ['instanceHref'],
+            ],
+          ],
+        ],
+      ]);
     }, []);
     $schema['definitions']['relationships'] = NestedArray::mergeDeep(
       empty($schema['definitions']['relationships']) ? [] : $schema['definitions']['relationships'],
