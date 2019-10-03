@@ -32,7 +32,7 @@ abstract class TopLevelSchemaLinkProviderBase extends LinkProviderBase implement
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    assert(in_array(static::$schemaRouteType, ['item', 'collection'], TRUE));
+    assert(in_array(static::$schemaRouteType, ['item', 'collection', 'entrypoint'], TRUE));
     $provider = new static($configuration, $plugin_id, $plugin_definition);
     $provider->setCurrentRouteMatch($container->get('current_route_match'));
     return $provider;
@@ -52,8 +52,13 @@ abstract class TopLevelSchemaLinkProviderBase extends LinkProviderBase implement
    */
   public function getLink($context) {
     assert($context instanceof JsonApiDocumentTopLevel);
-    $resource_type_name = explode('.', $this->currentRouteMatch->getRouteName())[1];
-    $schema_route_name = "jsonapi_schema.{$resource_type_name}." . static::$schemaRouteType;
+    if (static::$schemaRouteType === 'entrypoint') {
+      $schema_route_name = "jsonapi_schema." . static::$schemaRouteType;
+    }
+    else {
+      $resource_type_name = explode('.', $this->currentRouteMatch->getRouteName())[1];
+      $schema_route_name = "jsonapi_schema.{$resource_type_name}." . static::$schemaRouteType;
+    }
     return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), new Url($schema_route_name), $this->getLinkRelationType());
   }
 
