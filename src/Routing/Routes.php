@@ -88,7 +88,7 @@ class Routes implements ContainerInjectionInterface {
         if ($resource_type->isInternal() || !Routes::hasNonInternalTargetResourceTypes($target_resource_types)) {
           continue;
         }
-        $is_to_one_relationship = $this->isToOneRelationship($resource_type, $public_field_name);
+        $is_to_one_relationship = $resource_type->getFieldByPublicName($public_field_name)->hasOne();
         $public_target_resource_types = array_filter($target_resource_types, function (ResourceType $resource_type) {
           return !$resource_type->isInternal();
         });
@@ -125,20 +125,6 @@ class Routes implements ContainerInjectionInterface {
     return array_reduce($resource_types, function ($carry, ResourceType $target) {
       return $carry || !$target->isInternal();
     }, FALSE);
-  }
-
-  /**
-   * @param \Drupal\jsonapi\ResourceType\ResourceType $resource_type
-   * @param string $public_field_name
-   *
-   * @return bool
-   */
-  protected function isToOneRelationship(ResourceType $resource_type, $public_field_name) {
-    $internal_field_name = $resource_type->getInternalName($public_field_name);
-    $field_storage_definitions = $this->entityFieldManager->getFieldStorageDefinitions($resource_type->getEntityTypeId());
-    assert(isset($field_storage_definitions[$internal_field_name]));
-    $field_storage_definition = $field_storage_definitions[$internal_field_name];
-    return $field_storage_definition->getCardinality() === 1;
   }
 
 }
