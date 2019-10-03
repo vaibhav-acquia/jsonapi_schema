@@ -82,6 +82,41 @@ class JsonApiSchemaController extends ControllerBase {
     );
   }
 
+  public function getEntrypointSchema(Request $request) {
+    $cacheability = new CacheableMetadata();
+    $cacheability->addCacheTags(['jsonapi_resource_types']);
+    $collection_links = array_map(function (ResourceType $resource_type) use ($cacheability) {
+      $schema_url = Url::fromRoute("jsonapi_schema.{$resource_type->getTypeName()}.collection")->setAbsolute()->toString(TRUE);
+      $cacheability->addCacheableDependency($schema_url);
+      return [
+        'href' => '{instanceHref}',
+        'rel' => 'related',
+        'targetMediaType' => 'application/vnd.api+json',
+        'targetSchema' => $schema_url->getGeneratedUrl(),
+        'templatePointers' => [
+          'instanceHref' => "/links/{$resource_type->getTypeName()}/href",
+        ],
+        'templateRequired' => ['instanceHref'],
+      ];
+    }, array_filter($this->resourceTypeRepository->all(), function (ResourceType $resource_type) {
+      return !$resource_type->isInternal() && $resource_type->isLocatable();
+    }));
+    $schema = [
+      '$schema' => static::JSON_SCHEMA_DRAFT,
+      '$id' => $request->getUri(),
+      'allOf' =>  [
+        [
+          '$ref' => static::JSONAPI_BASE_SCHEMA_URI . '#/definitions/success',
+        ],
+        [
+          'type' => 'object',
+          'links' => $collection_links,
+        ],
+      ],
+    ];
+    return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
+  }
+
   public function getDocumentSchema(Request $request, $resource_type, $route_type) {
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
