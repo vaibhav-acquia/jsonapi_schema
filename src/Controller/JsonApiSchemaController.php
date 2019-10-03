@@ -78,7 +78,7 @@ class JsonApiSchemaController extends ControllerBase {
       $container->get('jsonapi.resource_type.repository'),
       $container->get('serializer'),
       $container->get('entity_type.manager'),
-      $container->get('jsonapi_schema.static_data_definition_extractor'),
+      $container->get('jsonapi_schema.static_data_definition_extractor')
     );
   }
 
