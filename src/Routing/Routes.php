@@ -56,19 +56,19 @@ class Routes implements ContainerInjectionInterface {
       }
       $resource_type_name = $resource_type->getTypeName();
       $base_path = $this->jsonApiBasePath . $resource_type->getPath();
-      $individual_document_schema_route = new Route($base_path . '/schema.json');
+      $individual_document_schema_route = new Route($base_path . '/schema');
       $individual_document_schema_route->addDefaults([
         RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getDocumentSchema',
         static::ROUTE_TYPE_PARAMETER_KEY => 'item',
         static::RESOURCE_TYPE_PARAMETER_KEY => $resource_type_name,
       ]);
-      $collection_document_schema_route = new Route($base_path . '/collection/schema.json');
+      $collection_document_schema_route = new Route($base_path . '/collection/schema');
       $collection_document_schema_route->addDefaults([
         RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getDocumentSchema',
         static::ROUTE_TYPE_PARAMETER_KEY => 'collection',
         static::RESOURCE_TYPE_PARAMETER_KEY => $resource_type_name,
       ]);
-      $resource_object_schema_route = new Route($base_path . '/resource/schema.json');
+      $resource_object_schema_route = new Route($base_path . '/resource/schema');
       $resource_object_schema_route->addDefaults([
         RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getResourceObjectSchema',
         static::ROUTE_TYPE_PARAMETER_KEY => 'type',
@@ -90,7 +90,7 @@ class Routes implements ContainerInjectionInterface {
         $public_target_resource_type_names = array_map(function (ResourceType $resource_type) {
           return $resource_type->getTypeName();
         }, $public_target_resource_types);
-        $related_document_schema_route = new Route($base_path . "/resource/relationships/$public_field_name/related/schema.json");
+        $related_document_schema_route = new Route($base_path . "/resource/relationships/$public_field_name/related/schema");
         $related_document_schema_route->addDefaults([
           RouteObjectInterface::CONTROLLER_NAME => static::CONTROLLER_NAME . '::getDocumentSchema',
           static::ROUTE_TYPE_PARAMETER_KEY => $is_to_one_relationship ? 'item' : 'collection',
@@ -99,7 +99,7 @@ class Routes implements ContainerInjectionInterface {
             : reset($public_target_resource_type_names),
         ]);
         $jsonapi_schema_routes->add("jsonapi_schema.$resource_type_name.$public_field_name.related", $related_document_schema_route);
-        //$relationship_document_schema_route = new Route($base_path . "/resource/relationships/$public_field_name/schema.json");
+        //$relationship_document_schema_route = new Route($base_path . "/resource/relationships/$public_field_name/schema");
       }
     }
     $jsonapi_schema_routes->addRequirements(['_access' => 'TRUE']);
