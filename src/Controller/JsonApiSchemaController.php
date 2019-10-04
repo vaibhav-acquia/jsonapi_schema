@@ -3,6 +3,7 @@
 namespace Drupal\jsonapi_schema\Controller;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
@@ -85,12 +86,13 @@ class JsonApiSchemaController extends ControllerBase {
   public function getEntrypointSchema(Request $request) {
     $cacheability = new CacheableMetadata();
     $cacheability->addCacheTags(['jsonapi_resource_types']);
-    $collection_links = array_map(function (ResourceType $resource_type) use ($cacheability) {
+    $collection_links = array_values(array_map(function (ResourceType $resource_type) use ($cacheability) {
       $schema_url = Url::fromRoute("jsonapi_schema.{$resource_type->getTypeName()}.collection")->setAbsolute()->toString(TRUE);
       $cacheability->addCacheableDependency($schema_url);
       return [
         'href' => '{instanceHref}',
         'rel' => 'related',
+        'title' => $this->getSchemaTitle($resource_type, 'collection'),
         'targetMediaType' => 'application/vnd.api+json',
         'targetSchema' => $schema_url->getGeneratedUrl(),
         'templatePointers' => [
@@ -100,7 +102,7 @@ class JsonApiSchemaController extends ControllerBase {
       ];
     }, array_filter($this->resourceTypeRepository->all(), function (ResourceType $resource_type) {
       return !$resource_type->isInternal() && $resource_type->isLocatable();
-    }));
+    })));
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
       '$id' => $request->getUri(),
@@ -118,9 +120,21 @@ class JsonApiSchemaController extends ControllerBase {
   }
 
   public function getDocumentSchema(Request $request, $resource_type, $route_type) {
+    if (is_array($resource_type)) {
+      $titles = array_map(function (ResourceType $type) use ($route_type) {
+        return $this->getSchemaTitle($this->resourceTypeRepository->getByTypeName($type), $route_type);
+      }, $resource_type);
+      $title = count($titles) === 2
+        ? implode(' and ', $titles)
+        : implode(', ', array_slice($titles, -1)) . ', and ' . end($titles);
+    }
+    else {
+      $title = $this->getSchemaTitle($this->resourceTypeRepository->getByTypeName($resource_type), $route_type);
+    }
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
       '$id' => $request->getUri(),
+      'title' => $title,
       'allOf' =>  [
         [
           '$ref' => static::JSONAPI_BASE_SCHEMA_URI,
@@ -172,7 +186,7 @@ class JsonApiSchemaController extends ControllerBase {
     $schema = [
       '$schema' => static::JSON_SCHEMA_DRAFT,
       '$id' => $request->getUri(),
-      'title' => $this->getResourceSchemaTitleFromResourceType($resource_type),
+      'title' => $this->getSchemaTitle($resource_type, 'item'),
       'allOf' => [
         [
           'type' => 'object',
@@ -273,14 +287,35 @@ class JsonApiSchemaController extends ControllerBase {
     return $schema;
   }
 
-  protected function getResourceSchemaTitleFromResourceType(ResourceType $resource_type) {
-    $entity_type = $this->entityTypeManager->getDefinition($resource_type->getEntityTypeID());
-    $bundle_entity_type_id = $entity_type->getBundleEntityType();
-    if (is_null($bundle_entity_type_id)) {
-      return $entity_type->getLabel();
+  /**
+   * Gets a schema title.
+   *
+   * @param \Drupal\jsonapi\ResourceType\ResourceType $resource_type
+   *   A JSON:API resource type for which to generate a title.
+   * @param $schema_type
+   *   The type of schema. Either 'collection' or 'item'.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+   *   The schema title.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   */
+  protected function getSchemaTitle(ResourceType $resource_type, $schema_type) {
+    $entity_type = $this->entityTypeManager->getDefinition($resource_type->getEntityTypeId());
+    $entity_type_label = $schema_type === 'collection' ? $entity_type->getPluralLabel() : $entity_type->getSingularLabel();
+    if ($bundle_type = $entity_type->getBundleEntityType()) {
+      $bundle = $this->entityTypeManager->getStorage($bundle_type)->load($resource_type->getBundle());
+      return $this->t(rtrim('@bundle_label @entity_type_label'), [
+        '@bundle_label' => Unicode::ucfirst($bundle->label()),
+        '@entity_type_label' => $entity_type_label,
+      ]);
     }
-    $bundle = $this->entityTypeManager->getStorage($bundle_entity_type_id)->load($resource_type->getBundle());
-    return $bundle->label();
+    else {
+      return $this->t(rtrim('@entity_type_label'), [
+        '@entity_type_label' => Unicode::ucfirst($entity_type_label),
+      ]);
+    }
   }
 
 }
