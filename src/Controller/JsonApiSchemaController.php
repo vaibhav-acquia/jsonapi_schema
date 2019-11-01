@@ -209,7 +209,10 @@ class JsonApiSchemaController extends ControllerBase {
   }
 
   protected function addFieldsSchema(array $schema, ResourceType $resource_type) {
-    $resource_fields = $resource_type->getFields();
+    // Filter out disabled fields.
+    $resource_fields = array_filter($resource_type->getFields(), function (ResourceTypeField $field) {
+      return $field->isFieldEnabled();
+    });
     if (empty($resource_fields)) {
       return $schema;
     }
@@ -246,7 +249,7 @@ class JsonApiSchemaController extends ControllerBase {
 
   protected static function addRelationshipsSchemaLinks(array $schema, ResourceType $resource_type, CacheableMetadata $cacheability) {
     $resource_relationships = array_filter($resource_type->getFields(), function (ResourceTypeField $field) {
-      return $field instanceof ResourceTypeRelationship;
+      return $field->isFieldEnabled() && $field instanceof ResourceTypeRelationship;
     });
     if (empty($resource_relationships)) {
       return $schema;
