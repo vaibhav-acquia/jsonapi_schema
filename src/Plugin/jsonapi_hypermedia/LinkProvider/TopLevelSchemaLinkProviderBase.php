@@ -8,9 +8,12 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Url;
 use Drupal\jsonapi\JsonApiResource\JsonApiDocumentTopLevel;
+use Drupal\jsonapi\ResourceType\ResourceType;
+use Drupal\jsonapi\Routing\Routes;
 use Drupal\jsonapi_hypermedia\AccessRestrictedLink;
 use Drupal\jsonapi_hypermedia\Plugin\LinkProviderBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Routing\Route;
 
 /**
  * Class TopLevelSchemaLinkProviderBase.
@@ -56,8 +59,13 @@ abstract class TopLevelSchemaLinkProviderBase extends LinkProviderBase implement
       $schema_route_name = "jsonapi_schema." . static::$schemaRouteType;
     }
     else {
-      $resource_type_name = explode('.', $this->currentRouteMatch->getRouteName())[1];
-      $schema_route_name = "jsonapi_schema.{$resource_type_name}." . static::$schemaRouteType;
+      $route = $this->currentRouteMatch->getRouteObject();
+      assert($route instanceof Route);
+      $resource_type = $route->getDefault(Routes::RESOURCE_TYPE_KEY);
+      if (!$resource_type instanceof ResourceType) {
+        return AccessRestrictedLink::createInaccessibleLink(new CacheableMetadata());
+      }
+      $schema_route_name = "jsonapi_schema.{$resource_type->getTypeName()}." . static::$schemaRouteType;
     }
     return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), new Url($schema_route_name), $this->getLinkRelationType());
   }
