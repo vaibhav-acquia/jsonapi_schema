@@ -161,7 +161,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
    *   purposes.
    */
   protected function requiredProperty(DataDefinitionInterface $property) {
-    return $property->isReadOnly() || $property->isRequired();
+    return $property->isRequired();
   }
 
   /**
