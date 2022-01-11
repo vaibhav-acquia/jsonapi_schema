@@ -94,7 +94,7 @@ class JsonApiSchemaController extends ControllerBase {
         'rel' => 'related',
         'title' => $this->getSchemaTitle($resource_type, 'collection'),
         'targetMediaType' => 'application/vnd.api+json',
-        'targetSchema' => $schema_url->getGeneratedUrl(),
+        'targetSchema' => ['$ref' => $schema_url->getGeneratedUrl()],
         'templatePointers' => [
           'instanceHref' => "/links/{$resource_type->getTypeName()}/href",
         ],
@@ -191,7 +191,7 @@ class JsonApiSchemaController extends ControllerBase {
         [
           'type' => 'object',
           'properties' => [
-            'type' => ['$ref' => '#definitions/type'],
+            'type' => ['$ref' => '#/definitions/type'],
           ],
         ],
         [
@@ -273,7 +273,7 @@ class JsonApiSchemaController extends ControllerBase {
               'href' => '{instanceHref}',
               'rel' => 'related',
               'targetMediaType' => 'application/vnd.api+json',
-              'targetSchema' => $related_schema_uri->getGeneratedUrl(),
+              'targetSchema' => ['$ref' => $related_schema_uri->getGeneratedUrl()],
               'templatePointers' => [
                 'instanceHref' => '/links/related/href',
               ],
