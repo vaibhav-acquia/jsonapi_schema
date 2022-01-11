@@ -61,14 +61,13 @@ abstract class TopLevelSchemaLinkProviderBase extends LinkProviderBase implement
     else {
       $route = $this->currentRouteMatch->getRouteObject();
       assert($route instanceof Route);
-      $resource_type = $route->getDefault(Routes::RESOURCE_TYPE_KEY);
-      if (!$resource_type instanceof ResourceType) {
-        return AccessRestrictedLink::createInaccessibleLink(new CacheableMetadata());
+      if ($resource_type = $route->getDefault(Routes::RESOURCE_TYPE_KEY)) {
+        $schema_route_name = "jsonapi_schema.{$resource_type}." . static::$schemaRouteType;
       }
-      $schema_route_name = "jsonapi_schema.{$resource_type->getTypeName()}." . static::$schemaRouteType;
     }
-    return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), new Url($schema_route_name), $this->getLinkRelationType());
+    return !empty($schema_route_name)
+      ? AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), new Url($schema_route_name), $this->getLinkRelationType())
+      : AccessRestrictedLink::createInaccessibleLink(AccessResult::allowed());
   }
 
 }
-
