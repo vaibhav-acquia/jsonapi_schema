@@ -78,6 +78,9 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
     if ($cardinality != FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && $cardinality != 1) {
       $normalized['properties'][$context['name']]['maxItems'] = $cardinality;
     }
+    if ($this->requiredProperty($entity)) {
+      $normalized['required'][] = $context['name'];
+    }
 
     return $normalized;
   }

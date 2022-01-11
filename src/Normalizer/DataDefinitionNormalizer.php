@@ -166,7 +166,12 @@ class DataDefinitionNormalizer extends NormalizerBase {
    *   purposes.
    */
   protected function requiredProperty(DataDefinitionInterface $property) {
-    return $property->isRequired();
+    // We must test all three values, because it may be possible a computed
+    // field has its read-only value explicitly set to a contradictory value, in
+    // which case the computed state is not taken into consideration. This is
+    // thus the safest test.
+    return $property->isRequired()
+      && (!$property->isReadOnly() && !$property->isComputed());
   }
 
   /**
