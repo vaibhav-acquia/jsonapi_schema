@@ -29,7 +29,10 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
     assert($list_data_definition instanceof ListDataDefinitionInterface);
     $context['parent'] = $list_data_definition;
     $property = $this->extractPropertyData($list_data_definition, $context);
-    $property['type'] = 'array';
+    $defaultType = $context['cardinality'] === 1 ? 'string' : 'array';
+    $property['type'] = $this->requiredProperty($list_data_definition)
+      ? $defaultType
+      : [$defaultType, 'null'];
 
     // This retrieves the definition common to ever item in the list, and
     // serializes it so we can define how members of the array should look.
@@ -50,7 +53,6 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
     if (!empty($context['cardinality']) && $context['cardinality'] === 1) {
       $single_property = $property['items'];
       unset($property['items']);
-      unset($property['type']);
       unset($property['minItems']);
       $single_property = array_merge($single_property, $property);
       $property = $single_property;
