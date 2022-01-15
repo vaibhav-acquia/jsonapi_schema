@@ -29,11 +29,6 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
     assert($list_data_definition instanceof ListDataDefinitionInterface);
     $context['parent'] = $list_data_definition;
     $property = $this->extractPropertyData($list_data_definition, $context);
-    $defaultType = $context['cardinality'] === 1 ? 'string' : 'array';
-    $property['type'] = $this->requiredProperty($list_data_definition)
-      ? $defaultType
-      : [$defaultType, 'null'];
-
     // This retrieves the definition common to ever item in the list, and
     // serializes it so we can define how members of the array should look.
     // There are no lists that might contain items of different types.
@@ -42,6 +37,8 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
       $format,
       $context
     );
+
+    $property['type'] = $context['cardinality'] === 1 ? $property['items']['type'] : 'array';
 
     // FieldDefinitionInterface::isRequired() explicitly indicates there must be
     // at least one item in the list. Extending this reasoning, the same must be
@@ -53,7 +50,6 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
     if (!empty($context['cardinality']) && $context['cardinality'] === 1) {
       $single_property = $property['items'];
       unset($property['items']);
-      unset($property['minItems']);
       $single_property = array_merge($single_property, $property);
       $property = $single_property;
     }
