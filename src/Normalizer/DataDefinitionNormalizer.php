@@ -5,6 +5,7 @@ namespace Drupal\jsonapi_schema\Normalizer;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\TypedData\DataDefinitionInterface;
+use Drupal\Core\TypedData\OptionsProviderInterface;
 use Drupal\serialization\Normalizer\NormalizerBase;
 
 /**
@@ -79,6 +80,26 @@ class DataDefinitionNormalizer extends NormalizerBase {
 
     if (!is_object($property) && !isset($property['title']) && isset($context['name'])) {
       $property['title'] = $context['name'];
+    }
+
+    $typed_data_manager = \Drupal::service('typed_data_manager');
+    if ($typed_data_manager->hasDefinition($entity->getDataType())) {
+      $data_item = \Drupal::service('typed_data_manager')->create($entity);
+      if ($data_item instanceof OptionsProviderInterface) {
+        $composition = $context['cardinality'] === FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED ? 'anyOf' : 'oneOf';
+        $allowed_values = $data_item->getPossibleOptions();
+        array_walk($allowed_values, function (&$v, $k) { $v = ['const' => $k, 'title' => (string) $v]; });
+
+        if (is_object($property)) {
+          $property->{$composition} = array_values($allowed_values);
+
+        }
+        else {
+          $property[$composition] = array_values($allowed_values);
+        }
+        // TODO: I can see this gets correctly set here, but then it's not in
+        // the JSONAPI output for the config entity type!! WHY?
+      }
     }
 
     $normalized = ['properties' => []];
