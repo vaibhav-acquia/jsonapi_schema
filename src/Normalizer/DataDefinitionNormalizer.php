@@ -97,8 +97,6 @@ class DataDefinitionNormalizer extends NormalizerBase {
         else {
           $property[$composition] = array_values($allowed_values);
         }
-        // TODO: I can see this gets correctly set here, but then it's not in
-        // the JSONAPI output for the config entity type!! WHY?
       }
     }
 
