@@ -45,7 +45,7 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
   /**
    * {@inheritdoc}
    */
-  public function supportsNormalization($data, $format = NULL) {
+  public function supportsNormalization($data, $format = NULL, array $context = []): bool {
     if (!parent::supportsNormalization($data, $format)) {
       return FALSE;
     }

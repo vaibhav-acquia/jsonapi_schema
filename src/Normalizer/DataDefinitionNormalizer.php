@@ -177,7 +177,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
   /**
    * {@inheritdoc}
    */
-  public function supportsNormalization($data, $format = NULL) {
+  public function supportsNormalization($data, $format = NULL, array $context = []): bool {
     return parent::supportsNormalization($data, $format)
       && $data instanceof DataDefinitionInterface
       && (empty($this->supportedDataTypes) || in_array($data->getDataType(), $this->supportedDataTypes));
@@ -186,7 +186,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
   /**
    * {@inheritdoc}
    */
-  public function supportsDenormalization($data, $type, $format = NULL) {
+  public function supportsDenormalization($data, $type, $format = NULL, array $context = []): bool {
     return FALSE;
   }
 

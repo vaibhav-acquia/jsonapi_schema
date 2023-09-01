@@ -116,7 +116,9 @@ class JsonApiSchemaController extends ControllerBase {
         ],
       ],
     ];
-    return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
+    $response = new CacheableJsonResponse($schema);
+    $response->addCacheableDependency($cacheability);
+    return $response;
   }
 
   public function getDocumentSchema(Request $request, $resource_type, $route_type) {
@@ -178,7 +180,9 @@ class JsonApiSchemaController extends ControllerBase {
         assert('not implemented');
         break;
     }
-    return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
+    $response = new CacheableJsonResponse($schema);
+    $response->addCacheableDependency($cacheability);
+    return $response;
   }
 
   public function getResourceObjectSchema(Request $request, $resource_type) {
@@ -205,7 +209,9 @@ class JsonApiSchemaController extends ControllerBase {
     $cacheability = new CacheableMetadata();
     $schema = $this->addFieldsSchema($schema, $resource_type);
     $schema = $this->addRelationshipsSchemaLinks($schema, $resource_type, $cacheability);
-    return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
+    $response = new CacheableJsonResponse($schema);
+    $response->addCacheableDependency($cacheability);
+    return $response;
   }
 
   protected function addFieldsSchema(array $schema, ResourceType $resource_type) {
