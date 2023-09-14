@@ -65,10 +65,13 @@ class DataDefinitionNormalizer extends NormalizerBase {
         $property['maxLength'] = $maxLength;
       }
 
-      if (empty($context['parent']->getSetting('allowed_values_function'))
-        && !empty($context['parent']->getSetting('allowed_values'))
-      ) {
-        $allowed_values = $context['parent']->getSetting('allowed_values');
+      if (!empty($context['parent']->getSetting('allowed_values_function')) || !empty($context['parent']->getSetting('allowed_values'))) {
+        if (!empty($context['parent']->getSetting('allowed_values'))) {
+          $allowed_values = $context['parent']->getSetting('allowed_values');
+        }
+        elseif (!empty($context['parent']->getSetting('allowed_values_function'))) {
+          $allowed_values = call_user_func($context['parent']->getSetting('allowed_values_function'), $context['parent']->getFieldDefinition());
+        }
         // Include titles for UI integration.
         // @see https://json-schema.org/understanding-json-schema/reference/generic.html?highlight=enum#annotations
         $composition = $context['cardinality'] === FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED ? 'anyOf' : 'oneOf';
