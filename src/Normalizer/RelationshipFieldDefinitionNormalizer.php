@@ -97,9 +97,15 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
   protected function normalizeRelationship(FieldDefinitionInterface $field_definition, $format = NULL, $context = []) {
     $resource_type_repository = \Drupal::service('jsonapi.resource_type.repository');
     assert($resource_type_repository instanceof ResourceTypeRepositoryInterface);
+    $cardinality = $field_definition
+      ->getFieldStorageDefinition()
+      ->getCardinality();
     // A relationship has very similar schema every time.
     $resource_identifier_object = [
-      'type' => 'object',
+      // Optional, single-value references can be NULL.
+      'type' => $cardinality > 1
+        ? 'object'
+        : ($this->requiredProperty($field_definition) ? 'object' : ['object', 'null']),
       'required' => ['type', 'id'],
       'properties' => [
         'type' => ['type' => 'string', 'title' => t('Referenced resource')],
@@ -112,9 +118,6 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
       ],
     ];
     // Handle the multivalue variant.
-    $cardinality = $field_definition
-      ->getFieldStorageDefinition()
-      ->getCardinality();
     if ($target_entity_type = $field_definition->getSetting('target_type')) {
       $handler_settings = $field_definition->getSetting('handler_settings');
       $target_bundles = empty($handler_settings['target_bundles']) ?
@@ -126,7 +129,6 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
             $target_entity_type,
             $bundle ?: $target_entity_type
           );
-          return $resource_type->getTypeName();
         },
         $target_bundles
       );
@@ -134,7 +136,7 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
         return $resource_type->getTypeName();
       }, array_filter($target_resource_types));
     }
-    $meta = $this->serializer->normalize($field_definition->getItemDefinition(), $format, $context);
+    $meta = ['type' => 'object'];
     if ($cardinality == 1) {
       $data = $resource_identifier_object;
       if (!empty($enum)) {
