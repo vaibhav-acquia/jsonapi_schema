@@ -228,11 +228,14 @@ class JsonApiSchemaController extends ControllerBase {
     $normalizer = $this->normalizer;
     $entity_type = $this->entityTypeManager->getDefinition($resource_type->getEntityTypeId());
     $bundle = $resource_type->getBundle();
-    $fields = array_reduce($resource_fields, function ($carry, ResourceTypeField $field) use ($normalizer, $entity_type, $bundle) {
+    $fields = array_reduce($resource_fields, function ($carry, ResourceTypeField $field) use ($normalizer, $resource_type, $entity_type, $bundle) {
       $field_schema = $normalizer->normalize(
         $this->staticDataDefinitionExtractor->extractField($entity_type, $bundle, $field->getInternalName()),
         'schema_json',
-        ['name' => $field->getPublicName()]
+        [
+          'name' => $field->getPublicName(),
+          'resource_type' => $resource_type,
+        ]
       );
       $fields_member = $field instanceof ResourceTypeAttribute ? 'attributes' : 'relationships';
       return NestedArray::mergeDeep($carry, [

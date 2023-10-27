@@ -5,6 +5,8 @@ namespace Drupal\jsonapi_schema\Normalizer;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\TypedData\DataDefinitionInterface;
+use Drupal\Core\TypedData\ListDataDefinitionInterface;
+use Drupal\Core\TypedData\OptionsProviderInterface;
 use Drupal\serialization\Normalizer\NormalizerBase;
 
 /**
@@ -61,19 +63,38 @@ class DataDefinitionNormalizer extends NormalizerBase {
 
     $property = $this->extractPropertyData($entity, $context);
     if (!is_object($property) && !empty($context['parent']) && $context['name'] == 'value') {
-      if ($maxLength = $context['parent']->getSetting('max_length')) {
+      /** @var \Drupal\Core\Field\TypedData\FieldItemDataDefinitionInterface $parent */
+      $parent = $context['parent'];
+
+      if ($maxLength = $parent->getSetting('max_length')) {
         $property['maxLength'] = $maxLength;
       }
 
-      if (empty($context['parent']->getSetting('allowed_values_function'))
-        && !empty($context['parent']->getSetting('allowed_values'))
-      ) {
-        $allowed_values = $context['parent']->getSetting('allowed_values');
-        // Include titles for UI integration.
-        // @see https://json-schema.org/understanding-json-schema/reference/generic.html?highlight=enum#annotations
-        $composition = $context['cardinality'] === FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED ? 'anyOf' : 'oneOf';
-        array_walk($allowed_values, function (&$v, $k) { $v = ['const' => $k, 'title' => $v]; });
-        $property[$composition] = array_values($allowed_values);
+      // Get possible options for anyOf/oneOf.
+      if (!empty($context['resource_type'])) {
+        /** @var \Drupal\jsonapi\ResourceType\ResourceType $resource_type */
+        $resource_type = $context['resource_type'];
+        $field_definition = $context['parent']->getFieldDefinition();
+        $field_storage_definition = $field_definition->getFieldStorageDefinition();
+        if (is_subclass_of($field_storage_definition, ListDataDefinitionInterface::class)) {
+          $class = $field_storage_definition->getItemDefinition()->getClass();
+          if (is_subclass_of($class, OptionsProviderInterface::class)) {
+            $entity_type = $resource_type->getEntityTypeId();
+            $bundle = $resource_type->getBundle();
+            /** @var \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager */
+            $entity_type_manager = \Drupal::entityTypeManager();
+            $entity_type_definition = $entity_type_manager->getDefinition($entity_type);
+            $bundle_key = $entity_type_definition->getKey('bundle');
+            /** @var \Drupal\Core\Entity\FieldableEntityInterface $mock_entity */
+            $mock_entity = $entity_type_manager->getStorage($entity_type)->create([$bundle_key => $bundle]);
+            $allowed_values = $field_storage_definition->getOptionsProvider($field_definition->getName(), $mock_entity)->getPossibleOptions();
+            // Include titles for UI integration.
+            // @see https://json-schema.org/understanding-json-schema/reference/generic.html?highlight=enum#annotations
+            $composition = $context['cardinality'] === FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED ? 'anyOf' : 'oneOf';
+            array_walk($allowed_values, function (&$v, $k) { $v = ['const' => $k, 'title' => $v]; });
+            $property[$composition] = array_values($allowed_values);
+          }
+        }
       }
     }
 
