@@ -4,6 +4,7 @@ namespace Drupal\jsonapi_schema\Normalizer;
 
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\Field\Plugin\Field\FieldType\BooleanItem;
 use Drupal\Core\TypedData\DataDefinitionInterface;
 use Drupal\Core\TypedData\ListDataDefinitionInterface;
 use Drupal\Core\TypedData\OptionsProviderInterface;
@@ -78,7 +79,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
         $field_storage_definition = $field_definition->getFieldStorageDefinition();
         if (is_subclass_of($field_storage_definition, ListDataDefinitionInterface::class)) {
           $class = $field_storage_definition->getItemDefinition()->getClass();
-          if (is_subclass_of($class, OptionsProviderInterface::class)) {
+          if (is_subclass_of($class, OptionsProviderInterface::class) && $class != BooleanItem::class) {
             $entity_type = $resource_type->getEntityTypeId();
             $bundle = $resource_type->getBundle();
             /** @var \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager */
