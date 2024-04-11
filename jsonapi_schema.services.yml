@@ -44,6 +44,10 @@ services:
     class: Drupal\jsonapi_schema\Normalizer\DataDefinitionTimestampNormalizer
     tags:
       - { name: normalizer, priority: 10 }
+  serializer.normalizer.data_definition.schema_json.uri:
+    class: Drupal\jsonapi_schema\Normalizer\DataDefinitionUriNormalizer
+    tags:
+      - { name: normalizer, priority: 10 }
   serializer.normalizer.data_definition.schema_json.undefined:
     class: Drupal\jsonapi_schema\Normalizer\DataDefinitionUndefinedNormalizer
     tags:
