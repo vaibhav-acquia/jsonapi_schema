@@ -32,7 +32,12 @@ final class ResourceObjectSchemaLinkProvider extends LinkProviderBase {
     assert($context instanceof ResourceObject);
     $resource_type_name = $context->getResourceType()->getTypeName();
     $resource_schema_uri = Url::fromRoute("jsonapi_schema.$resource_type_name.type");
-    return AccessRestrictedLink::createLink(AccessResult::allowed(), new CacheableMetadata(), $resource_schema_uri, $this->getLinkRelationType());
+    return AccessRestrictedLink::createLink(
+      AccessResult::allowedIf(!$context->getResourceType()->isInternal()),
+      new CacheableMetadata(),
+      $resource_schema_uri,
+      $this->getLinkRelationType()
+    );
   }
 
 }
