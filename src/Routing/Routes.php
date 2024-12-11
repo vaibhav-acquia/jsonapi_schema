@@ -49,6 +49,7 @@ class Routes implements ContainerInjectionInterface {
   }
 
   public function routes() {
+    return new RouteCollection();
     $jsonapi_schema_routes = new RouteCollection();
     $entrypoint_schema_route = new Route($this->jsonApiBasePath . '/schema');
     $entrypoint_schema_route->addDefaults([

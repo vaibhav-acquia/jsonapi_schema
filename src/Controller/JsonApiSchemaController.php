@@ -226,7 +226,11 @@ class JsonApiSchemaController extends ControllerBase {
       $field_schema = $normalizer->normalize(
         $this->staticDataDefinitionExtractor->extractField($entity_type, $bundle, $field->getInternalName()),
         'schema_json',
-        ['name' => $field->getPublicName()]
+        [
+          'name' => $field->getPublicName(),
+          'entityTypeId' => $entity_type->id(),
+          'bundleId' => $bundle,
+        ]
       );
       $fields_member = $field instanceof ResourceTypeAttribute ? 'attributes' : 'relationships';
       return NestedArray::mergeDeep($carry, [
@@ -307,18 +311,17 @@ class JsonApiSchemaController extends ControllerBase {
   protected function getSchemaTitle(ResourceType $resource_type, $schema_type) {
     $entity_type = $this->entityTypeManager->getDefinition($resource_type->getEntityTypeId());
     $entity_type_label = $schema_type === 'collection' ? $entity_type->getPluralLabel() : $entity_type->getSingularLabel();
-    if ($bundle_type = $entity_type->getBundleEntityType()) {
+    if ($resource_type->getBundle() !== NULL && $bundle_type = $entity_type->getBundleEntityType()) {
       $bundle = $this->entityTypeManager->getStorage($bundle_type)->load($resource_type->getBundle());
       return $this->t(rtrim('@bundle_label @entity_type_label'), [
         '@bundle_label' => Unicode::ucfirst($bundle->label()),
         '@entity_type_label' => $entity_type_label,
       ]);
     }
-    else {
-      return $this->t(rtrim('@entity_type_label'), [
-        '@entity_type_label' => Unicode::ucfirst($entity_type_label),
-      ]);
-    }
+
+    return $this->t(rtrim('@entity_type_label'), [
+      '@entity_type_label' => Unicode::ucfirst($entity_type_label),
+    ]);
   }
 
 }

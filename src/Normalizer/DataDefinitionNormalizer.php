@@ -60,6 +60,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
     }
 
     $property = $this->extractPropertyData($entity, $context);
+    $originalPropertyType = is_array($property) ? $property['type'] : NULL;
     if (!is_object($property) && !empty($context['parent']) && $context['name'] == 'value') {
       if ($maxLength = $context['parent']->getSetting('max_length')) {
         $property['maxLength'] = $maxLength;
@@ -73,6 +74,11 @@ class DataDefinitionNormalizer extends NormalizerBase {
         // @see https://json-schema.org/understanding-json-schema/reference/generic.html?highlight=enum#annotations
         $composition = $context['cardinality'] === FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED ? 'anyOf' : 'oneOf';
         array_walk($allowed_values, function (&$v, $k) { $v = ['const' => $k, 'title' => $v]; });
+        // Ensure non-required properties are nullable.
+        if (!$this->requiredProperty($context['parent'])) {
+          $property['type'] = [$property['type'], 'null'];
+          $allowed_values[] = ['type' => 'null'];
+        }
         $property[$composition] = array_values($allowed_values);
       }
     }
@@ -82,9 +88,9 @@ class DataDefinitionNormalizer extends NormalizerBase {
     }
 
     $normalized = ['properties' => []];
-    if (!is_object($property) && !in_array($property['type'], static::JSON_TYPES)) {
+    if (!is_object($property) && !in_array($originalPropertyType, static::JSON_TYPES)) {
       // Unable to find the correct type.
-      \Drupal::logger('jsonapi_schema')->error('{type} is not a valid type for a JSON document.', ['type' => $property['type']]);
+      \Drupal::logger('jsonapi_schema')->error('{type} is not a valid type for a JSON document.', ['type' => $originalPropertyType]);
       $property = (object) [];
     }
     $normalized['properties'][$context['name']] = $property;
@@ -176,8 +182,12 @@ class DataDefinitionNormalizer extends NormalizerBase {
 
   /**
    * {@inheritdoc}
+   * @param mixed $data
+   * @param null $format
+   * @param array $context
    */
-  public function supportsNormalization($data, $format = NULL) {
+  public function supportsNormalization($data, $format = NULL, array $context = []): bool
+  {
     return parent::supportsNormalization($data, $format)
       && $data instanceof DataDefinitionInterface
       && (empty($this->supportedDataTypes) || in_array($data->getDataType(), $this->supportedDataTypes));
@@ -185,8 +195,13 @@ class DataDefinitionNormalizer extends NormalizerBase {
 
   /**
    * {@inheritdoc}
+   * @param $data
+   * @param string $type
+   * @param null $format
+   * @param array $context
    */
-  public function supportsDenormalization($data, $type, $format = NULL) {
+  public function supportsDenormalization($data, $type, $format = NULL, array $context = []): bool
+  {
     return FALSE;
   }
 

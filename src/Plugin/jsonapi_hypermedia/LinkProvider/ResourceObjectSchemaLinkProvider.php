@@ -29,6 +29,7 @@ final class ResourceObjectSchemaLinkProvider extends LinkProviderBase {
    * {@inheritdoc}
    */
   public function getLink($context) {
+    return AccessRestrictedLink::createInaccessibleLink(new CacheableMetadata());
     assert($context instanceof ResourceObject);
     $resource_type_name = $context->getResourceType()->getTypeName();
     $resource_schema_uri = Url::fromRoute("jsonapi_schema.$resource_type_name.type");
