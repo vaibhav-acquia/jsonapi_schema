@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\jsonapi_schema\Plugin\jsonapi_hypermedia\LinkProvider;
+namespace Drupal\jsonapi_schema_routes\Plugin\jsonapi_hypermedia\LinkProvider;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Cache\CacheableMetadata;
@@ -8,7 +8,6 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Url;
 use Drupal\jsonapi\JsonApiResource\JsonApiDocumentTopLevel;
-use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\Routing\Routes;
 use Drupal\jsonapi_hypermedia\AccessRestrictedLink;
 use Drupal\jsonapi_hypermedia\Plugin\LinkProviderBase;

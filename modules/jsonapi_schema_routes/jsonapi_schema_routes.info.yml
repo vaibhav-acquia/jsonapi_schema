@@ -1,0 +1,7 @@
+name: JSON:API Schema Routes
+type: module
+description: Provides schema for all JSON:API routes.
+package: Core
+core_version_requirement: ^10
+dependencies:
+  - jsonapi_schema:jsonapi_schema

@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\jsonapi_schema\Controller;
+namespace Drupal\jsonapi_schema_routes\Controller;
 
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\Unicode;
@@ -14,61 +14,25 @@ use Drupal\jsonapi\ResourceType\ResourceTypeAttribute;
 use Drupal\jsonapi\ResourceType\ResourceTypeField;
 use Drupal\jsonapi\ResourceType\ResourceTypeRelationship;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
-use Drupal\jsonapi_schema\Routing\Routes;
-use Drupal\jsonapi_schema\StaticDataDefinitionExtractor;
+use Drupal\jsonapi_schema\SchemaGeneratorInterface;
+use Drupal\jsonapi_schema_routes\Routing\Routes;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class JsonApiSchemaController extends ControllerBase {
 
-  const JSON_SCHEMA_DRAFT = 'https://json-schema.org/draft/2019-09/hyper-schema';
+  const JSON_SCHEMA_DRAFT = 'https://json-schema.org/draft/2020-12/hyper-schema';
 
   const JSONAPI_BASE_SCHEMA_URI = 'https://jsonapi.org/schema';
 
-  /**
-   * The JSON:API resource type repository.
-   *
-   * @var \Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface
-   */
-  protected $resourceTypeRepository;
-
-  /**
-   * The serialization service.
-   *
-   * @var \Symfony\Component\Serializer\Normalizer\NormalizerInterface
-   */
-  protected $normalizer;
-
-  /**
-   * The entity type manager.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
-   */
-  protected $entityTypeManager;
-
-  /**
-   * The static data definition extractor.
-   *
-   * @var \Drupal\jsonapi_schema\StaticDataDefinitionExtractor
-   */
-  protected $staticDataDefinitionExtractor;
-
-  /**
-   * JsonApiSchemaController constructor.
-   *
-   * @param \Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface $resource_type_repository
-   *   The JSON:API resource type repository.
-   * @param \Symfony\Component\Serializer\Normalizer\NormalizerInterface $normalizer
-   *   The serializer.
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   *   The entity type manager.
-   */
-  public function __construct(ResourceTypeRepositoryInterface $resource_type_repository, NormalizerInterface $normalizer, EntityTypeManagerInterface $entity_type_manager, StaticDataDefinitionExtractor $static_data_definition_extractor) {
-    $this->resourceTypeRepository = $resource_type_repository;
-    $this->normalizer = $normalizer;
-    $this->entityTypeManager = $entity_type_manager;
-    $this->staticDataDefinitionExtractor = $static_data_definition_extractor;
+  public function __construct(
+    protected ResourceTypeRepositoryInterface $resourceTypeRepository,
+    protected NormalizerInterface $normalizer,
+    EntityTypeManagerInterface $entityTypeManager,
+    protected SchemaGeneratorInterface $schemaGenerator,
+  ) {
+    $this->entityTypeManager = $entityTypeManager;
   }
 
   /**
@@ -79,7 +43,7 @@ class JsonApiSchemaController extends ControllerBase {
       $container->get('jsonapi.resource_type.repository'),
       $container->get('serializer'),
       $container->get('entity_type.manager'),
-      $container->get('jsonapi_schema.static_data_definition_extractor')
+      $container->get(SchemaGenerator::class),
     );
   }
 
@@ -116,12 +80,12 @@ class JsonApiSchemaController extends ControllerBase {
         ],
       ],
     ];
-    return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
+    return (new CacheableJsonResponse($schema))->addCacheableDependency($cacheability);
   }
 
-  public function getDocumentSchema(Request $request, $resource_type, $route_type) {
+  public function getDocumentSchema(Request $request, array|string $resource_type, $route_type) {
     if (is_array($resource_type)) {
-      $titles = array_map(function (ResourceType $type) use ($route_type) {
+      $titles = array_map(function (string $type) use ($route_type) {
         return $this->getSchemaTitle($this->resourceTypeRepository->getByTypeName($type), $route_type);
       }, $resource_type);
       $title = count($titles) === 2
@@ -131,30 +95,11 @@ class JsonApiSchemaController extends ControllerBase {
     else {
       $title = $this->getSchemaTitle($this->resourceTypeRepository->getByTypeName($resource_type), $route_type);
     }
-    $schema = [
-      '$schema' => static::JSON_SCHEMA_DRAFT,
-      '$id' => $request->getUri(),
-      'title' => $title,
-      'allOf' =>  [
-        [
-          '$ref' => static::JSONAPI_BASE_SCHEMA_URI,
-        ],
-        [
-          'if' => [
-            '$ref' => static::JSONAPI_BASE_SCHEMA_URI . '#/definitions/success',
-          ],
-          'then' => [
-            'type' => 'object',
-            'properties' => [
-              'data' => [
-                '$ref' => '#/definitions/data',
-              ],
-            ],
-            'required' => ['data'],
-          ],
-        ],
-      ],
-    ];
+    $schemas = array_map(
+      function (string $type) {
+      },
+      is_array($resource_type) ? $resource_type : [$resource_type]
+    );
     $cacheability = new CacheableMetadata();
     $get_schema_ref = function ($resource_type) use ($cacheability) {
       $schema_url = Url::fromRoute("jsonapi_schema.$resource_type.type")->setAbsolute()->toString(TRUE);
@@ -165,20 +110,23 @@ class JsonApiSchemaController extends ControllerBase {
       ? ['anyOf' => array_map($get_schema_ref, $resource_type)]
       : $get_schema_ref($resource_type);
     switch ($route_type) {
+      // Individual resource.
       case 'item':
         $schema['definitions']['data'] = $type_schema;
         break;
+      // Collection.
       case 'collection':
         $schema['definitions']['data'] = [
           'type' => 'array',
           'items' => $type_schema,
         ];
         break;
+      // Relationship/Related.
       case 'relationship':
         assert('not implemented');
         break;
     }
-    return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
+    return (new CacheableJsonResponse($schema))->addCacheableDependency($cacheability);
   }
 
   public function getResourceObjectSchema(Request $request, $resource_type) {
@@ -205,7 +153,7 @@ class JsonApiSchemaController extends ControllerBase {
     $cacheability = new CacheableMetadata();
     $schema = $this->addFieldsSchema($schema, $resource_type);
     $schema = $this->addRelationshipsSchemaLinks($schema, $resource_type, $cacheability);
-    return CacheableJsonResponse::create($schema)->addCacheableDependency($cacheability);
+    return (new CacheableJsonResponse($schema))->addCacheableDependency($cacheability);
   }
 
   protected function addFieldsSchema(array $schema, ResourceType $resource_type) {
