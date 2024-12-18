@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\jsonapi_schema\Plugin\jsonapi_hypermedia\LinkProvider;
+namespace Drupal\jsonapi_schema_routes\Plugin\jsonapi_hypermedia\LinkProvider;
 
 use Drupal\jsonapi_hypermedia\Annotation\JsonapiHypermediaLinkProvider;
 

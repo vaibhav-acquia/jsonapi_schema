@@ -1,14 +1,14 @@
 <?php
 
-namespace Drupal\jsonapi_schema\Routing;
+namespace Drupal\jsonapi_schema_routes\Routing;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface;
 use Drupal\jsonapi\Routing\Routes as JsonApiRoutes;
-use Drupal\jsonapi_schema\Controller\JsonApiSchemaController;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+use Drupal\jsonapi_schema_routes\Controller\JsonApiSchemaController;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
@@ -21,23 +21,12 @@ class Routes implements ContainerInjectionInterface {
 
   const ROUTE_TYPE_PARAMETER_KEY = 'route_type';
 
-  /**
-   * @var \Drupal\jsonapi\ResourceType\ResourceTypeRepositoryInterface
-   */
-  protected $resourceTypeRepository;
-
-  protected $jsonApiRoutes;
-
-  protected $jsonApiBasePath;
-
-  protected $entityFieldManager;
-
-  public function __construct(ResourceTypeRepositoryInterface $resource_type_repository, EntityFieldManagerInterface $entity_field_manager, JsonApiRoutes $jsonapi_routes, $jsonapi_base_path) {
-    $this->resourceTypeRepository = $resource_type_repository;
-    $this->entityFieldManager = $entity_field_manager;
-    $this->jsonApiRoutes = $jsonapi_routes;
-    $this->jsonApiBasePath = $jsonapi_base_path;
-  }
+  public function __construct(
+    protected ResourceTypeRepositoryInterface $resourceTypeRepository,
+    protected EntityFieldManagerInterface $entityFieldManager,
+    protected JsonApiRoutes $jsonApiRoutes,
+    protected string $jsonApiBasePath,
+  ) {}
 
   public static function create(ContainerInterface $container) {
     return new static(

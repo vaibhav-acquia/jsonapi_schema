@@ -1,6 +1,6 @@
 name: JSON:API Schema
 type: module
-description: Provides schema for all JSON:API routes.
+description: Provides JSON:API schema generation support.
 package: Core
 core_version_requirement: ^10
 dependencies:
