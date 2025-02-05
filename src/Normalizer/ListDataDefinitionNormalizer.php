@@ -25,7 +25,7 @@ class ListDataDefinitionNormalizer extends DataDefinitionNormalizer {
   /**
    * {@inheritdoc}
    */
-  public function normalize($list_data_definition, $format = NULL, array $context = []) {
+  public function normalize($list_data_definition, $format = NULL, array $context = []): array|\ArrayObject|bool|float|int|null|string {
     assert($list_data_definition instanceof ListDataDefinitionInterface);
     $context['parent'] = $list_data_definition;
     $property = $this->extractPropertyData($list_data_definition, $context);

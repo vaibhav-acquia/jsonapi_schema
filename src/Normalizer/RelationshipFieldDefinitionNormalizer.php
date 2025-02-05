@@ -58,7 +58,7 @@ class RelationshipFieldDefinitionNormalizer extends ListDataDefinitionNormalizer
   /**
    * {@inheritdoc}
    */
-  public function normalize($entity, $format = NULL, array $context = []) {
+  public function normalize($entity, $format = NULL, array $context = []): array|\ArrayObject|bool|float|int|null|string {
     $cardinality = $entity->getFieldStorageDefinition()->getCardinality();
     $context['cardinality'] = $cardinality;
     assert($entity instanceof FieldDefinitionInterface);

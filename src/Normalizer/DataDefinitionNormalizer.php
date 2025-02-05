@@ -47,7 +47,7 @@ class DataDefinitionNormalizer extends NormalizerBase {
   /**
    * {@inheritdoc}
    */
-  public function normalize($entity, $format = NULL, array $context = []) {
+  public function normalize($entity, $format = NULL, array $context = []): array|\ArrayObject|bool|float|int|null|string {
     assert($entity instanceof DataDefinitionInterface);
     // `text source` and `date source` produce objects not supported in the API.
     // It is not clear how the API excludes them.

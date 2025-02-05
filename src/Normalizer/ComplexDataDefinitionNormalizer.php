@@ -27,7 +27,7 @@ class ComplexDataDefinitionNormalizer extends DataDefinitionNormalizer {
   /**
    * {@inheritdoc}
    */
-  public function normalize($entity, $format = NULL, array $context = []) {
+  public function normalize($entity, $format = NULL, array $context = []): array|\ArrayObject|bool|float|int|null|string {
     assert($entity instanceof ComplexDataDefinitionInterface);
     $context['parent'] = $entity;
     $normalized = $this->extractPropertyData($entity);
