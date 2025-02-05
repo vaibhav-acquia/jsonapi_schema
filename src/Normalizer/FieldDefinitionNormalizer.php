@@ -25,7 +25,7 @@ class FieldDefinitionNormalizer extends ListDataDefinitionNormalizer {
   /**
    * {@inheritdoc}
    */
-  public function normalize($field_definition, $format = NULL, array $context = []) {
+  public function normalize($field_definition, $format = NULL, array $context = []): array|\ArrayObject|bool|float|int|null|string {
     assert($field_definition instanceof FieldDefinitionInterface);
     $cardinality = $field_definition->getFieldStorageDefinition()->getCardinality();
     $context['cardinality'] = $cardinality;
