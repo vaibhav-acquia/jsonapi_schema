@@ -2,7 +2,7 @@ name: JSON:API Schema
 type: module
 description: Provides schema for all JSON:API routes.
 package: Core
-core_version_requirement: ^8.8 || ^9 || ^10
+core_version_requirement: ^8.8 || ^9 || ^10 || ^11
 dependencies:
   - drupal:jsonapi
   - drupal:serialization
